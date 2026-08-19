@@ -1,0 +1,16 @@
+BasedOnStyle: LLVM
+AlignConsecutiveMacros: Consecutive
+AllowShortFunctionsOnASingleLine: Empty
+BreakTemplateDeclarations: Yes
+IncludeBlocks: Regroup
+MainIncludeChar: AngleBracket
+SortIncludes:
+  Enabled: true
+  IgnoreCase: false
+IncludeCategories:
+  - Regex: "^<lox/"
+    Priority: 1
+  - Regex: "^<"
+    Priority: 2
+  - Regex: ".*"
+    Priority: 3

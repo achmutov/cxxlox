@@ -1,0 +1,38 @@
+{
+    "$schema": "https://cmake.org/cmake/help/v4.3/_downloads/3e2d73bff478d88a7de0de736ba5e361/schema.json",
+    "version": 11,
+    "configurePresets": [
+        {
+            "name": "base",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "hidden": true
+        },
+        {
+            "name": "debug",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "release",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug",
+            "configurePreset": "debug",
+            "jobs": 8
+        },
+        {
+            "name": "release",
+            "configurePreset": "release",
+            "jobs": 8
+        }
+    ]
+}

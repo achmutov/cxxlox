@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://json.schemastore.org/pre-commit-config.json
+
+repos:
+  - repo: https://github.com/pocc/pre-commit-hooks
+    rev: 788e052eab28ff3694e49ca95a86a181b3f60836
+    hooks:
+      - id: clang-format
+        types_or: [c, c++]
+        args: [-i]
+      - id: clang-tidy
+        args:
+          - --quiet
+          - -p=build
+          - --fix
+  - repo: https://github.com/BlankSpruce/gersemi-pre-commit
+    rev: 0.28.0
+    hooks:
+    - id: gersemi

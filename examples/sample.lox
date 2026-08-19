@@ -1,0 +1,27 @@
+// this is a line comment
+
+var sample_identifier = 5;
+var result = 12 * (5 + 1 - 10.5);
+print "hello world";
+
+/* Nested comment */
+
+for (var a = 1; a < 10; a = a + 1) {
+    print "Goodbye";
+}
+
+fun someFun(b) {
+    return b + 2;
+}
+
+class SomeThing {
+    init() {
+        this.kek = "kek";
+    }
+    printHelloWorld(val) {
+        print val
+    }
+}
+
+var some = Something();
+some.printHelloWorld(109);
