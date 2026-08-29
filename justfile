@@ -1,7 +1,7 @@
 alias b := build
 build PRESET="debug":
-    cmake --preset {{ PRESET }}
-    cmake --build --preset {{ PRESET }}
+    cmake --preset {{ PRESET }} --log-level=VERBOSE
+    cmake --build --preset {{ PRESET }} -v
 
-run SAMPLE="./examples/sample.lox" PRESET="debug": (build PRESET)
+run SAMPLE="sample" PRESET="debug": (build PRESET)
     ./build/{{ PRESET }}/lox {{ justfile_dir() }}/examples/{{ SAMPLE }}.lox

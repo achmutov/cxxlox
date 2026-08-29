@@ -1,9 +1,3 @@
-#include <lox/Ast.h>
-#include <lox/AstPrinter.h>
-#include <lox/Parser.h>
-#include <lox/Scanner.h>
-#include <lox/Token.h>
-
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -14,6 +8,12 @@
 #include <string>
 #include <string_view>
 #include <vector>
+
+import Token;
+import Scanner;
+import Ast;
+import AstPrinter;
+import Parser;
 
 static bool hadError = false;
 

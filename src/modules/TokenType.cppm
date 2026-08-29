@@ -1,8 +1,9 @@
-#pragma once
-
+module;
 #include <cstdint>
 
-namespace lox {
+export module TokenType;
+
+export namespace lox {
 
 enum class TokenType : std::uint8_t {
   // Single-character tokens.

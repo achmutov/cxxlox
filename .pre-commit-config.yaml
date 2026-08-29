@@ -10,7 +10,7 @@ repos:
       - id: clang-tidy
         args:
           - --quiet
-          - -p=build
+          - -p=build/debug
           - --fix
   - repo: https://github.com/BlankSpruce/gersemi-pre-commit
     rev: 0.28.0

@@ -1,18 +1,21 @@
-#include <lox/utils.h>
+module;
 
-#include <lox/TokenType.h>
-
+#include <cstddef>
 #include <optional>
 #include <print>
 #include <string_view>
 
-namespace lox {
+export module utils;
+import TokenType;
 
-void report(int line, std::string_view where, std::string_view message) {
+export namespace lox {
+
+void report(std::size_t line, std::string_view where,
+            std::string_view message) {
   std::println(stderr, "[line {}] Error {}: {}", line, where, message);
 }
 
-void error(int line, std::string_view message) {
+void error(std::size_t line, std::string_view message) {
   report(line, "", message);
 }
 

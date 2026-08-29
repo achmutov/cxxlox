@@ -3,4 +3,7 @@ CompileFlags:
 Style:
   AngledHeaders: ".*"
 Diagnostics:
+  Includes:
+    IgnoreHeader:
+      - '.*\.cppm'
   MissingIncludes: Strict
