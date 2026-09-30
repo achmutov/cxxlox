@@ -9,10 +9,12 @@ export module utils;
 import TokenType;
 
 export namespace lox {
+bool hadError = false;
 
 void report(std::size_t line, std::string_view where,
             std::string_view message) {
   std::println(stderr, "[line {}] Error {}: {}", line, where, message);
+  hadError = true;
 }
 
 void error(std::size_t line, std::string_view message) {

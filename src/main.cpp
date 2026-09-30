@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 import Token;
@@ -14,18 +15,22 @@ import Scanner;
 import Ast;
 import AstPrinter;
 import Parser;
-
-static bool hadError = false;
+import utils;
 
 static void run(std::string_view script) {
   const std::vector<lox::Token> tokens = lox::Scanner(script).scanTokens();
   for (auto &token : tokens)
     std::println("{}", token.toString());
   auto parser = lox::Parser{tokens};
-  auto expr = parser.parse();
+  auto maybe_expr = parser.parse();
+  if (lox::hadError)
+    return;
 
-  auto astPrinter = lox::AstPrinter();
-  std::println("{}", expr->accept(astPrinter));
+  if (maybe_expr.has_value()) {
+    auto expr = std::move(maybe_expr.value());
+    auto astPrinter = lox::AstPrinter();
+    std::println("{}", expr->accept(astPrinter));
+  }
 }
 
 static void runFile(std::string_view path) {
@@ -38,7 +43,7 @@ static void runFile(std::string_view path) {
   ss << f.rdbuf();
   run(ss.str());
 
-  if (hadError)
+  if (lox::hadError)
     exit(65);
 }
 
@@ -49,7 +54,7 @@ static void runPrompt() {
     if (!std::getline(std::cin, line))
       break;
     run(line);
-    hadError = false;
+    lox::hadError = false;
   }
   std::println();
 }
