@@ -13,19 +13,18 @@ export namespace lox {
 
 // Utility macros
 #define EXPRS(PREDICATE, ...)                                                  \
-  PREDICATE(Binary, __VA_ARGS__)                                               \
-  PREDICATE(Unary, __VA_ARGS__)                                                \
-  PREDICATE(Grouping, __VA_ARGS__)                                             \
-  PREDICATE(Literal, __VA_ARGS__)
+  PREDICATE(BinaryExpr, __VA_ARGS__)                                           \
+  PREDICATE(UnaryExpr, __VA_ARGS__)                                            \
+  PREDICATE(GroupingExpr, __VA_ARGS__)                                         \
+  PREDICATE(LiteralExpr, __VA_ARGS__)
 #define VISITOR_TYPES(PREDICATE, ...) PREDICATE(std::string, __VA_ARGS__)
 
 // Forward declare expressions
-#define EXPR_DECL(EXPR, ...) struct EXPR##Expr;
+#define EXPR_DECL(EXPR, ...) struct EXPR;
 EXPRS(EXPR_DECL)
 #undef EXPR_DECL
 
-#define VISITOR_EXPR_ABS(EXPR, T)                                              \
-  virtual auto visit##EXPR##Expr(EXPR##Expr &) -> T = 0;
+#define VISITOR_EXPR_ABS(EXPR, T) virtual auto visit##EXPR(EXPR &) -> T = 0;
 
 template <class T>
 struct Visitor {
@@ -49,7 +48,7 @@ using ParseLiteral = std::variant<std::string, double, bool>;
 
 #define EXPR_ACCEPT_T(T, EXPR)                                                 \
   auto accept(Visitor<T> &visitor) -> T override {                             \
-    return visitor.visit##EXPR##Expr(*this);                                   \
+    return visitor.visit##EXPR(*this);                                         \
   }
 
 #define EXPR_ACCEPT(T) EXPR_ACCEPT_T(T, EXPR)
@@ -59,7 +58,7 @@ struct BinaryExpr : public Expr {
   ExprPtr left, right;
   BinaryExpr(Token op, ExprPtr left, ExprPtr right)
       : op{std::move(op)}, left(std::move(left)), right(std::move(right)) {}
-  VISITOR_TYPES(EXPR_ACCEPT_T, Binary)
+  VISITOR_TYPES(EXPR_ACCEPT_T, BinaryExpr)
 };
 
 struct UnaryExpr : public Expr {
@@ -67,7 +66,7 @@ struct UnaryExpr : public Expr {
   ExprPtr right;
   UnaryExpr(Token op, ExprPtr right)
       : op{std::move(op)}, right(std::move(right)) {}
-  VISITOR_TYPES(EXPR_ACCEPT_T, Unary)
+  VISITOR_TYPES(EXPR_ACCEPT_T, UnaryExpr)
 };
 
 struct GroupingExpr : public Expr {
@@ -75,14 +74,14 @@ struct GroupingExpr : public Expr {
   explicit GroupingExpr(ExprPtr expression)
       : expression(std::move(expression)) {}
 
-  VISITOR_TYPES(EXPR_ACCEPT_T, Grouping)
+  VISITOR_TYPES(EXPR_ACCEPT_T, GroupingExpr)
 };
 
 struct LiteralExpr : public Expr {
   std::optional<ParseLiteral> literal;
   explicit LiteralExpr(std::optional<ParseLiteral> literal)
       : literal{std::move(literal)} {}
-  VISITOR_TYPES(EXPR_ACCEPT_T, Literal)
+  VISITOR_TYPES(EXPR_ACCEPT_T, LiteralExpr)
 };
 
 } // namespace lox
