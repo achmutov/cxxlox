@@ -49,7 +49,10 @@ export class Parser {
 
   // traversal
   auto expression() -> ExprPtr {
-    return equality();
+    return comma();
+  }
+  auto comma() -> ExprPtr {
+    return binaryExpr<&Parser::equality>({TokenType::COMMA});
   }
   auto equality() -> ExprPtr {
     return binaryExpr<&Parser::comparison>(
