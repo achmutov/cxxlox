@@ -41,6 +41,8 @@ struct Expr {
   virtual ~Expr() = default;
 };
 
+using ExprPtr = std::unique_ptr<Expr>;
+
 #undef ACCEPT_DECL_ABS
 
 using ParseLiteral = std::variant<std::string, double, bool>;
@@ -54,23 +56,23 @@ using ParseLiteral = std::variant<std::string, double, bool>;
 
 struct BinaryExpr : public Expr {
   Token op;
-  std::unique_ptr<Expr> left, right;
-  BinaryExpr(Token op, std::unique_ptr<Expr> left, std::unique_ptr<Expr> right)
+  ExprPtr left, right;
+  BinaryExpr(Token op, ExprPtr left, ExprPtr right)
       : op{std::move(op)}, left(std::move(left)), right(std::move(right)) {}
   VISITOR_TYPES(EXPR_ACCEPT_T, Binary)
 };
 
 struct UnaryExpr : public Expr {
   Token op;
-  std::unique_ptr<Expr> right;
-  UnaryExpr(Token op, std::unique_ptr<Expr> right)
+  ExprPtr right;
+  UnaryExpr(Token op, ExprPtr right)
       : op{std::move(op)}, right(std::move(right)) {}
   VISITOR_TYPES(EXPR_ACCEPT_T, Unary)
 };
 
 struct GroupingExpr : public Expr {
-  std::unique_ptr<Expr> expression;
-  explicit GroupingExpr(std::unique_ptr<Expr> expression)
+  ExprPtr expression;
+  explicit GroupingExpr(ExprPtr expression)
       : expression(std::move(expression)) {}
 
   VISITOR_TYPES(EXPR_ACCEPT_T, Grouping)

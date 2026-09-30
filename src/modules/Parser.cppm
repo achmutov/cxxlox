@@ -43,10 +43,6 @@ export class ParseException : public std::runtime_error {
 };
 
 export class Parser {
-public:
-  using ExprPtr = std::unique_ptr<Expr>;
-
-private:
   const std::span<const Token> tokens;
   std::size_t current{0};
 
