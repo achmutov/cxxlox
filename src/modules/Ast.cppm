@@ -13,6 +13,7 @@ export namespace lox {
 
 // Utility macros
 #define EXPRS(PREDICATE, ...)                                                  \
+  PREDICATE(TernaryExpr, __VA_ARGS__)                                          \
   PREDICATE(BinaryExpr, __VA_ARGS__)                                           \
   PREDICATE(UnaryExpr, __VA_ARGS__)                                            \
   PREDICATE(GroupingExpr, __VA_ARGS__)                                         \
@@ -52,6 +53,13 @@ using ParseLiteral = std::variant<std::string, double, bool>;
   }
 
 #define EXPR_ACCEPT(T) EXPR_ACCEPT_T(T, EXPR)
+
+struct TernaryExpr : public Expr {
+  ExprPtr cond, left, right;
+  TernaryExpr(ExprPtr cond, ExprPtr left, ExprPtr right)
+      : cond{std::move(cond)}, left{std::move(left)}, right{std::move(right)} {}
+  VISITOR_TYPES(EXPR_ACCEPT_T, TernaryExpr)
+};
 
 struct BinaryExpr : public Expr {
   Token op;

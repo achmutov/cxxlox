@@ -25,6 +25,10 @@ export struct AstPrinter : public Visitor<std::string> {
     return expr.accept(*this);
   }
 
+  auto visitTernaryExpr(TernaryExpr &expr) -> std::string override {
+    return parenthesize("ternary", *expr.cond, *expr.left, *expr.right);
+  }
+
   auto visitBinaryExpr(BinaryExpr &expr) -> std::string override {
     return parenthesize(expr.op.lexeme, *expr.left, *expr.right);
   }

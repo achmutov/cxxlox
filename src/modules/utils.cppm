@@ -46,6 +46,10 @@ auto tokenType(TokenType type) -> std::optional<std::string_view> {
     return {"SLASH"};
   case TokenType::STAR:
     return {"STAR"};
+  case TokenType::QUESTION_MARK:
+    return {"QUESTION_MARK"};
+  case TokenType::COLON:
+    return {"COLON"};
 
   // One or two character tokens.
   case TokenType::BANG:

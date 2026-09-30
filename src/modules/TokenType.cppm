@@ -18,6 +18,8 @@ enum class TokenType : std::uint8_t {
   SEMICOLON,
   SLASH,
   STAR,
+  QUESTION_MARK,
+  COLON,
 
   // One or two character tokens.
   BANG,

@@ -20,6 +20,18 @@ import Ast;
 import TokenType;
 import utils;
 
+// expression -> comma
+// comma      -> ternary ("," ternary)*
+// ternary    -> equality "?" ternary ":" ternary
+// equality   -> comparison ("==" | "!=" comparison)*
+// comparison -> term ((">" | "<" | ">=" | "<=") term)*
+// term       -> factor (("+" | "-") factor)*
+// factor     -> unary (( "*" | "/" ) unary)*;
+// unary      -> ("!" | "-") unary
+//             | primary;
+// primary    -> "true" | "false" | "nil" | NUMBER | STRING | grouping;
+// grouping   -> "(" expression ")";
+
 namespace lox {
 
 template <class T>
@@ -52,8 +64,21 @@ export class Parser {
     return comma();
   }
   auto comma() -> ExprPtr {
-    return binaryExpr<&Parser::equality>({TokenType::COMMA});
+    return binaryExpr<&Parser::ternary>({TokenType::COMMA});
   }
+  auto ternary() -> ExprPtr {
+    auto expr = equality();
+    while (match({TokenType::QUESTION_MARK})) {
+      auto left = ternary();
+      consumeOrError(TokenType::COLON,
+                     "Expect ':' after first expression in ternary.");
+      auto right = ternary();
+      expr = std::make_unique<TernaryExpr>(std::move(expr), std::move(left),
+                                           std::move(right));
+    }
+    return expr;
+  }
+
   auto equality() -> ExprPtr {
     return binaryExpr<&Parser::comparison>(
         {TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL});
