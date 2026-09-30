@@ -5,6 +5,7 @@ module;
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
@@ -51,21 +52,19 @@ export class Parser {
     return equality();
   }
   auto equality() -> ExprPtr {
-    return binaryExpr(BinaryExprPrecedence::COMPARISON,
-                      {TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL});
+    return binaryExpr<&Parser::comparison>(
+        {TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL});
   }
   auto comparison() -> ExprPtr {
-    return binaryExpr(BinaryExprPrecedence::TERM,
-                      {TokenType::LESS, TokenType::LESS_EQUAL,
-                       TokenType::GREATER_EQUAL, TokenType::GREATER_EQUAL});
+    return binaryExpr<&Parser::term>({TokenType::LESS, TokenType::LESS_EQUAL,
+                                      TokenType::GREATER_EQUAL,
+                                      TokenType::GREATER_EQUAL});
   }
   auto term() -> ExprPtr {
-    return binaryExpr(BinaryExprPrecedence::FACTOR,
-                      {TokenType::MINUS, TokenType::PLUS});
+    return binaryExpr<&Parser::factor>({TokenType::MINUS, TokenType::PLUS});
   }
   auto factor() -> ExprPtr {
-    return binaryExpr(BinaryExprPrecedence::UNARY,
-                      {TokenType::STAR, TokenType::SLASH});
+    return binaryExpr<&Parser::unary>({TokenType::STAR, TokenType::SLASH});
   }
   auto unary() -> ExprPtr {
     if (match({TokenType::BANG, TokenType::MINUS})) {
@@ -104,25 +103,12 @@ export class Parser {
     throw error(peek(), "Expect expression.");
   }
 
-  // traversal helpers
-  auto prec2expr(BinaryExprPrecedence prec) -> ExprPtr {
-    switch (prec) {
-    case BinaryExprPrecedence::COMPARISON:
-      return comparison();
-    case BinaryExprPrecedence::TERM:
-      return term();
-    case BinaryExprPrecedence::FACTOR:
-      return factor();
-    case BinaryExprPrecedence::UNARY:
-      return unary();
-    }
-  }
-  auto binaryExpr(const BinaryExprPrecedence prec,
-                  const std::span<const TokenType> ts) -> ExprPtr {
-    auto expr = prec2expr(prec);
+  template <auto nextExpr>
+  auto binaryExpr(const std::span<const TokenType> ts) -> ExprPtr {
+    auto expr = std::invoke(nextExpr, this);
     while (match(ts)) {
       const auto op = previous();
-      auto right = prec2expr(prec);
+      auto right = std::invoke(nextExpr, this);
       expr =
           std::make_unique<BinaryExpr>(op, std::move(expr), std::move(right));
     }
