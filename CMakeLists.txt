@@ -24,6 +24,21 @@ target_sources(
                 src/modules/TokenType.cppm
                 src/modules/Parser.cppm
 )
-target_compile_options(lox PRIVATE -Wall -Wextra -Wpedantic -Wconversion)
+target_compile_options(
+    lox
+    PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+        $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
+)
+target_link_options(
+    lox
+    PRIVATE
+        $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+        $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
+)
 
 include_directories(include)
