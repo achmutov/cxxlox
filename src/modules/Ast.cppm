@@ -1,7 +1,6 @@
 module;
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -45,7 +44,7 @@ using ExprPtr = std::unique_ptr<Expr>;
 
 #undef ACCEPT_DECL_ABS
 
-using ParseLiteral = std::variant<std::string, double, bool>;
+using ParseLiteral = std::variant<std::monostate, std::string, double, bool>;
 
 #define EXPR_ACCEPT_T(T, EXPR)                                                 \
   auto accept(Visitor<T> &visitor) -> T override {                             \
@@ -86,9 +85,8 @@ struct GroupingExpr : public Expr {
 };
 
 struct LiteralExpr : public Expr {
-  std::optional<ParseLiteral> literal;
-  explicit LiteralExpr(std::optional<ParseLiteral> literal)
-      : literal{std::move(literal)} {}
+  ParseLiteral literal;
+  explicit LiteralExpr(ParseLiteral literal) : literal{std::move(literal)} {}
   VISITOR_TYPES(EXPR_ACCEPT_T, LiteralExpr)
 };
 

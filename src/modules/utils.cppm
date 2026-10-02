@@ -1,6 +1,8 @@
 module;
 
 #include <cstddef>
+#include <cstdlib>
+#include <format>
 #include <optional>
 #include <print>
 #include <string_view>
@@ -115,6 +117,23 @@ auto tokenType(TokenType type) -> std::optional<std::string_view> {
   default:
     return std::nullopt;
   }
+}
+
+template <typename... _Args>
+[[noreturn]] void panic(std::format_string<_Args...> __fmt, _Args &&...__args) {
+  std::println(stderr, __fmt, std::forward<_Args>(__args)...);
+  std::abort();
+}
+
+template <typename T, typename... _Args>
+auto optional_expect(const std::optional<T> &opt,
+                     std::format_string<_Args...> __fmt, _Args &&...__args)
+    -> const T & {
+  if (!opt.has_value()) {
+
+    panic(__fmt, std::forward<_Args>(__args)...);
+  }
+  return opt.value();
 }
 
 } // namespace lox

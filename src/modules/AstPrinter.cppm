@@ -4,6 +4,7 @@ module;
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <variant>
 
 export module AstPrinter;
 import Ast;
@@ -51,14 +52,11 @@ export struct AstPrinter : public Visitor<std::string> {
   }
 
   auto visitLiteralExpr(LiteralExpr &expr) -> std::string override {
-    return expr.literal
-        .transform([](ParseLiteral v) {
-          return v.visit(overloads{
-              [](std::string value) { return value; },
-              [](bool value) { return std::string(value ? "true" : "false"); },
-              [](double value) { return std::to_string(value); }});
-        })
-        .value_or("<empty>");
+    return expr.literal.visit(overloads{
+        [](std::monostate) -> std::string { return "<empty>"; },
+        [](std::string value) { return value; },
+        [](bool value) { return std::string(value ? "true" : "false"); },
+        [](double value) { return std::to_string(value); }});
   }
 };
 

@@ -4,6 +4,7 @@ module;
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <format>
 #include <functional>
 #include <memory>
@@ -13,6 +14,7 @@ module;
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 
 export module Parser;
 import Token;
@@ -108,18 +110,18 @@ export class Parser {
     if (match({TokenType::TRUE}))
       return std::make_unique<LiteralExpr>(true);
     if (match({TokenType::NIL}))
-      return std::make_unique<LiteralExpr>(std::nullopt);
+      return std::make_unique<LiteralExpr>(std::monostate{});
 
     if (match({TokenType::NUMBER, TokenType::STRING})) {
-      auto prev_literal = previous().literal;
+      const auto token = previous();
+      const auto literal =
+          optional_expect(token.literal, "Token {} is supposed to have literal",
+                          token.toString());
 
-      std::optional<ParseLiteral> const n =
-          prev_literal.transform([](auto const &v) {
-            return v.visit(
-                overloads{[](auto const &arg) -> ParseLiteral { return arg; }});
-          });
+      const auto parse_literal = literal.visit(
+          overloads{[](auto const &arg) -> ParseLiteral { return arg; }});
 
-      return std::make_unique<LiteralExpr>(n);
+      return std::make_unique<LiteralExpr>(parse_literal);
     }
 
     if (match({TokenType::LEFT_PAREN})) {
