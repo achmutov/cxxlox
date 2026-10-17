@@ -14,3 +14,5 @@ IncludeCategories:
     Priority: 2
   - Regex: ".*"
     Priority: 3
+StatementMacros: [INTERPRET_RETURN]
+Standard: c++26
