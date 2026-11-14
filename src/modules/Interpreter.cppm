@@ -129,11 +129,33 @@ export struct Interpreter : public Visitor<InterpreterObject> {
                                           expr.op);
     case TokenType::MINUS:
       return interpretNumericalBinaryExpr(left, right, std::minus<>(), expr.op);
-    case TokenType::PLUS:
+    case TokenType::PLUS: {
       INTERPRET_RETURN(left, right, std::plus, InterpreterNumber)
       INTERPRET_RETURN(left, right, std::plus, InterpreterString)
-      throw InterpreterTypeException(
-          expr.op, "Operands must be two numbers or two strings.");
+
+      // EVIL
+      const auto result = std::visit(
+          overloads{
+              [](InterpreterNumber left,
+                 InterpreterString &right) -> std::optional<InterpreterObject> {
+                return InterpreterString{stringify(InterpreterObject{left}) +
+                                         right.value};
+              },
+              [](InterpreterString &left,
+                 InterpreterNumber right) -> std::optional<InterpreterObject> {
+                return InterpreterString{left.value +
+                                         stringify(InterpreterObject{right})};
+              },
+              [](const auto &, const auto &)
+                  -> std::optional<InterpreterObject> { return std::nullopt; }},
+          left, right);
+      if (result.has_value())
+        return result.value();
+
+      throw InterpreterTypeException(expr.op,
+                                     "Operands must be two numbers or two "
+                                     "strings, or one number and one string.");
+    }
     case TokenType::GREATER:
       return interpretNumericalBinaryExpr<InterpreterBoolean>(
           left, right, std::greater<>(), expr.op);
