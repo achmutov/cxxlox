@@ -16,6 +16,7 @@ import Ast;
 import AstPrinter;
 import Parser;
 import utils;
+import Interpreter;
 
 static void run(std::string_view script) {
   const std::vector<lox::Token> tokens = lox::Scanner(script).scanTokens();
@@ -30,6 +31,8 @@ static void run(std::string_view script) {
     auto expr = std::move(maybe_expr.value());
     auto astPrinter = lox::AstPrinter();
     std::println("{}", expr->accept(astPrinter));
+    lox::Interpreter interpreter{};
+    interpreter.interpret(*expr);
   }
 }
 
@@ -45,6 +48,9 @@ static void runFile(std::string_view path) {
 
   if (lox::hadError)
     exit(65);
+  else if (lox::hadRuntimeError) {
+    exit(70);
+  }
 }
 
 static void runPrompt() {

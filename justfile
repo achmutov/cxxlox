@@ -5,3 +5,6 @@ build PRESET="debug":
 
 run SAMPLE="sample" PRESET="debug": (build PRESET)
     ./build/{{ PRESET }}/lox {{ justfile_dir() }}/examples/{{ SAMPLE }}.lox
+
+prompt PRESET="debug":
+    ./build/{{ PRESET }}/lox

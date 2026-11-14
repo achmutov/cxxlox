@@ -7,6 +7,7 @@ module;
 
 export module Ast;
 import Token;
+import InterpreterObject;
 
 export namespace lox {
 
@@ -17,7 +18,9 @@ export namespace lox {
   PREDICATE(UnaryExpr, __VA_ARGS__)                                            \
   PREDICATE(GroupingExpr, __VA_ARGS__)                                         \
   PREDICATE(LiteralExpr, __VA_ARGS__)
-#define VISITOR_TYPES(PREDICATE, ...) PREDICATE(std::string, __VA_ARGS__)
+#define VISITOR_TYPES(PREDICATE, ...)                                          \
+  PREDICATE(std::string, __VA_ARGS__)                                          \
+  PREDICATE(InterpreterObject, __VA_ARGS__)
 
 // Forward declare expressions
 #define EXPR_DECL(EXPR, ...) struct EXPR;

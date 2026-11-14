@@ -12,6 +12,7 @@ import TokenType;
 
 export namespace lox {
 bool hadError = false;
+bool hadRuntimeError = false;
 
 void report(std::size_t line, std::string_view where,
             std::string_view message) {
