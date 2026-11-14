@@ -2,12 +2,15 @@ module;
 
 #include <cassert>
 #include <concepts>
+#include <cstdlib>
 #include <format>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -56,11 +59,42 @@ concept InterpretBinaryOperation =
       } -> std::same_as<decltype(R::value)>;
     };
 
-export class InterpreterTypeException : public std::runtime_error {
+export class InterpreterRuntimeException : public std::runtime_error {
+public:
+  explicit InterpreterRuntimeException(std::string &&msg)
+      : std::runtime_error{msg} {}
+
+  constexpr virtual auto name() -> std::string_view = 0;
+
+  virtual auto what2() -> std::string {
+    return std::format("{}: {}", name(), what());
+  }
+};
+
+export class InterpreterTypeException : public InterpreterRuntimeException {
 public:
   Token token;
-  InterpreterTypeException(Token token, const std::string &&msg)
-      : std::runtime_error{msg}, token{std::move(token)} {}
+  InterpreterTypeException(Token token, std::string &&msg)
+      : InterpreterRuntimeException{std::move(msg)}, token{std::move(token)} {}
+
+  constexpr auto name() -> std::string_view override {
+    return "TypeException";
+  }
+
+  auto what2() -> std::string override {
+    return std::format("{}: {} [line {}]", name(), what(), token.line);
+  }
+};
+
+export class InterpreterZeroDivisionException
+    : public InterpreterRuntimeException {
+public:
+  InterpreterZeroDivisionException()
+      : InterpreterRuntimeException{"division by zero"} {}
+
+  constexpr auto name() -> std::string_view override {
+    return "ZeroDivisionError";
+  }
 };
 
 template <typename F, typename Input, typename Output>
@@ -69,12 +103,14 @@ concept BinaryOperation = requires(F &f, Input a, Output b) {
 };
 
 export struct Interpreter : public Visitor<InterpreterObject> {
+  constexpr static auto binary_numeric_error = "Operands must be numbers";
+
   void interpret(Expr &expr) {
     try {
       const auto val_string = stringify(evaluate(expr));
       std::cout << val_string << "\n";
-    } catch (InterpreterTypeException &ex) {
-      std::cout << ex.what() << " [line " << ex.token.line << "]" << "\n";
+    } catch (InterpreterRuntimeException &ex) {
+      std::cout << ex.what2() << "\n";
       hadRuntimeError = true;
     }
   }
@@ -121,9 +157,19 @@ export struct Interpreter : public Visitor<InterpreterObject> {
     auto left = evaluate(*expr.left);
     auto right = evaluate(*expr.right);
     switch (expr.op.type) {
-    case TokenType::SLASH:
-      return interpretNumericalBinaryExpr(left, right, std::divides<>(),
-                                          expr.op);
+    case TokenType::SLASH: {
+      const auto *left_value = std::get_if<InterpreterNumber>(&left);
+      const auto *right_value = std::get_if<InterpreterNumber>(&right);
+
+      if (!left_value || !right_value)
+        throw InterpreterTypeException(expr.op, binary_numeric_error);
+
+      // check division
+      if (std::abs(right_value->value) < std::numeric_limits<double>::epsilon())
+        throw InterpreterZeroDivisionException{};
+
+      return InterpreterNumber{left_value->value / right_value->value};
+    }
     case TokenType::STAR:
       return interpretNumericalBinaryExpr(left, right, std::multiplies<>(),
                                           expr.op);
@@ -243,7 +289,7 @@ private:
         left, right, std::forward<decltype(f)>(f));
 
     if (!result.has_value())
-      throw InterpreterTypeException(token, "Operands must be numbers");
+      throw InterpreterTypeException(token, binary_numeric_error);
 
     return result.value();
   }
