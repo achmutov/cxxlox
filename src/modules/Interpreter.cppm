@@ -202,6 +202,12 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     return env.get(expr.name.lexeme);
   }
 
+  auto visitAssignExpr(AssignExpr &expr) -> InterpreterObject override {
+    auto value = evaluate(*expr.value);
+    env.assign(expr.name.lexeme, value);
+    return value;
+  }
+
   void visitExpressionStmt(ExpressionStmt &stmt) override {
     evaluate(*stmt.expression);
   }

@@ -31,7 +31,9 @@ import utils;
 // printStmt      -> "print" expression ";" ;
 // expressionStmt -> expression ";" ;
 // expression     -> comma ;
-// comma          -> ternary ("," ternary)* ;
+// comma          -> assignment ("," assignment)* ;
+// assignment     -> IDENTIFIER "=" assignment
+//                 | ternary
 // ternary        -> equality ("?" ternary ":" ternary)? ;
 // equality       -> comparison ("==" | "!=" comparison)* ;
 // comparison     -> term ((">" | "<" | ">=" | "<=") term)* ;
@@ -111,7 +113,19 @@ export class Parser {
     return comma();
   }
   auto comma() -> ExprPtr {
-    return binaryExpr<&Parser::ternary>({TokenType::COMMA});
+    return binaryExpr<&Parser::assignment>({TokenType::COMMA});
+  }
+  auto assignment() -> ExprPtr {
+    auto expr = ternary();
+    if (match({TokenType::EQUAL})) {
+      const auto equals = previous();
+      auto value = ternary();
+      if (auto var_ptr = dynamic_cast<VarExpr *>(expr.get())) {
+        return std::make_unique<AssignExpr>(var_ptr->name, std::move(value));
+      }
+      error(equals, "Invalid assignment target.");
+    }
+    return expr;
   }
   auto ternary() -> ExprPtr {
     auto expr = equality();
