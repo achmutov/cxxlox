@@ -21,7 +21,7 @@ struct overloads : Ts... {
 template <class T>
 concept ExprType = std::same_as<T, Expr>;
 
-export struct AstPrinter : public Visitor<std::string> {
+export struct AstPrinter : public Expr::Visitor<std::string> {
   auto print(Expr &expr) -> std::string {
     return expr.accept(*this);
   }

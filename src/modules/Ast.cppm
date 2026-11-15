@@ -28,23 +28,21 @@ EXPRS(EXPR_DECL)
 #undef EXPR_DECL
 
 #define VISITOR_EXPR_ABS(EXPR, T) virtual auto visit##EXPR(EXPR &) -> T = 0;
-
-template <class T>
-struct Visitor {
-  EXPRS(VISITOR_EXPR_ABS, T)
-};
-
-#undef VISITOR_EXPR_ABS
-
-#define ACCEPT_DECL_ABS(T, ...) virtual auto accept(Visitor<T> &) -> T = 0;
+#define ACCEPT_DECL_ABS(T, ...)   virtual auto accept(Visitor<T> &) -> T = 0;
 
 struct Expr {
+  template <class T>
+  struct Visitor {
+    EXPRS(VISITOR_EXPR_ABS, T)
+  };
+
   VISITOR_TYPES(ACCEPT_DECL_ABS)
   virtual ~Expr() = default;
 };
 
 using ExprPtr = std::unique_ptr<Expr>;
 
+#undef VISITOR_EXPR_ABS
 #undef ACCEPT_DECL_ABS
 
 using ParseLiteral = std::variant<std::monostate, std::string, double, bool>;

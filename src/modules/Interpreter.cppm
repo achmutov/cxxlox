@@ -102,7 +102,7 @@ concept BinaryOperation = requires(F &f, Input a, Output b) {
   { std::invoke(f, a, b) } -> std::same_as<Output>;
 };
 
-export struct Interpreter : public Visitor<InterpreterObject> {
+export struct Interpreter : public Expr::Visitor<InterpreterObject> {
   constexpr static auto binary_numeric_error = "Operands must be numbers";
 
   void interpret(Expr &expr) {
