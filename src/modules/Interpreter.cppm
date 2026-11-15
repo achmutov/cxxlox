@@ -23,6 +23,7 @@ import TokenType;
 import utils;
 import InterpreterObject;
 import InterpreterErrors;
+import Environment;
 
 #define INTERPRET_RETURN(LEFT, RIGHT, OP, ...)                                 \
   {                                                                            \
@@ -198,9 +199,7 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
   }
 
   auto visitVarExpr(VarExpr &expr) -> InterpreterObject override {
-    (void)expr;
-    // TODO: get from environment
-    return InterpreterNil{};
+    return env.get(expr.name.lexeme);
   }
 
   void visitExpressionStmt(ExpressionStmt &stmt) override {
@@ -210,11 +209,17 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     std::println("{}", stringify(evaluate(*stmt.expression)));
   }
   void visitVarStmt(VarStmt &stmt) override {
-    (void)stmt;
-    // define in environment
+    const auto name = stmt.name.lexeme;
+    const auto value = stmt.expression.has_value()
+                           ? evaluate(*stmt.expression.value())
+                           : InterpreterNil{};
+
+    env.define(name, value);
   }
 
 private:
+  Environment env;
+
   void execute(Stmt &stmt) {
     stmt.accept(*this);
   }

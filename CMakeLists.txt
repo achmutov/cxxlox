@@ -26,6 +26,7 @@ target_sources(
                 src/modules/Interpreter.cppm
                 src/modules/InterpreterObject.cppm
                 src/modules/InterpreterErrors.cppm
+                src/modules/Environment.cppm
 )
 target_compile_options(
     lox

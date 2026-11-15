@@ -3,6 +3,7 @@ module;
 #include <cstddef>
 #include <cstdlib>
 #include <format>
+#include <functional>
 #include <optional>
 #include <print>
 #include <string_view>
@@ -136,5 +137,12 @@ auto optional_expect(const std::optional<T> &opt,
   }
   return opt.value();
 }
+
+struct StringHash {
+  using is_transparent = void;
+  auto operator()(std::string_view s) const noexcept -> size_t {
+    return std::hash<std::string_view>()(s);
+  }
+};
 
 } // namespace lox
