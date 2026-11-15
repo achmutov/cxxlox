@@ -236,11 +236,21 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     }
   }
 
+  auto visitVarExpr(VarExpr &expr) -> InterpreterObject override {
+    (void)expr;
+    // TODO: get from environment
+    return InterpreterNil{};
+  }
+
   void visitExpressionStmt(ExpressionStmt &stmt) override {
     evaluate(*stmt.expression);
   }
   void visitPrintStmt(PrintStmt &stmt) override {
     std::println("{}", stringify(evaluate(*stmt.expression)));
+  }
+  void visitVarStmt(VarStmt &stmt) override {
+    (void)stmt;
+    // define in environment
   }
 
 private:

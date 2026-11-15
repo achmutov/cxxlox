@@ -8,6 +8,7 @@ module;
 #include <format>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -22,7 +23,10 @@ import Ast;
 import TokenType;
 import utils;
 
-// program        -> statement* ;
+// clang-format off
+
+// program        -> declaration* ;
+// declaration    -> varDecl | statement ;
 // statement      -> printStmt | expressionStmt ;
 // printStmt      -> "print" expression ";" ;
 // expressionStmt -> expression ";" ;
@@ -35,8 +39,10 @@ import utils;
 // factor         -> unary (( "*" | "/" ) unary)* ;
 // unary          -> ("!" | "-") unary
 //                 | primary ;
-// primary        -> "true" | "false" | "nil" | NUMBER | STRING | grouping ;
+// primary        -> "true" | "false" | "nil" | NUMBER | STRING | grouping | IDENTIFIER;
 // grouping       -> "(" expression ")" ;
+
+// clang-format on
 
 namespace lox {
 
@@ -66,6 +72,26 @@ export class Parser {
   std::size_t current{0};
 
   // traversal
+  auto declaration() -> std::optional<StmtPtr> {
+    try {
+      if (match({TokenType::VAR}))
+        return varDeclaration();
+      return statement();
+    } catch (ParseException &ex) {
+      synchronize();
+      return std::nullopt;
+    }
+  }
+  auto varDeclaration() -> StmtPtr {
+    const Token name =
+        consumeOrError(TokenType::IDENTIFIER, "Expect variable name.");
+    std::optional<ExprPtr> initializer = std::nullopt;
+    if (match({TokenType::EQUAL}))
+      initializer = expression();
+    consumeOrError(TokenType::SEMICOLON,
+                   "Expect ';' after variable declaration.");
+    return std::make_unique<VarStmt>(name, std::move(initializer));
+  }
   auto statement() -> StmtPtr {
     if (match({TokenType::PRINT}))
       return printStatement();
@@ -142,6 +168,9 @@ export class Parser {
 
       return std::make_unique<LiteralExpr>(parse_literal);
     }
+
+    if (match({TokenType::IDENTIFIER}))
+      return std::make_unique<VarExpr>(previous());
 
     if (match({TokenType::LEFT_PAREN})) {
       auto expr = expression();
@@ -244,7 +273,11 @@ public:
   auto parse() -> std::vector<StmtPtr> {
     auto stmts = std::vector<StmtPtr>{};
     while (!isAtEnd()) {
-      stmts.push_back(statement());
+      auto decl = declaration();
+      // TODO: do not silently ignore
+      if (decl.has_value()) {
+        stmts.push_back(std::move(decl.value()));
+      }
     }
     return stmts;
   }

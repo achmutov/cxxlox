@@ -1,6 +1,7 @@
 module;
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -17,11 +18,13 @@ export namespace lox {
   PREDICATE(BinaryExpr, __VA_ARGS__)                                           \
   PREDICATE(UnaryExpr, __VA_ARGS__)                                            \
   PREDICATE(GroupingExpr, __VA_ARGS__)                                         \
-  PREDICATE(LiteralExpr, __VA_ARGS__)
+  PREDICATE(LiteralExpr, __VA_ARGS__)                                          \
+  PREDICATE(VarExpr, __VA_ARGS__)
 
 #define STMTS(STMT, ...)                                                       \
   STMT(ExpressionStmt, __VA_ARGS__)                                            \
-  STMT(PrintStmt, __VA_ARGS__)
+  STMT(PrintStmt, __VA_ARGS__)                                                 \
+  STMT(VarStmt, __VA_ARGS__)
 
 // Forward declare constructs
 #define CONSTRUCT_DECL(CONSTRUCT, ...) struct CONSTRUCT;
@@ -108,6 +111,12 @@ struct LiteralExpr : public Expr {
   VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, LiteralExpr)
 };
 
+struct VarExpr : public Expr {
+  Token name;
+  explicit VarExpr(Token name) : name{std::move(name)} {}
+  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, VarExpr)
+};
+
 struct ExpressionStmt : public Stmt {
   ExprPtr expression;
   explicit ExpressionStmt(ExprPtr expression)
@@ -119,6 +128,14 @@ struct PrintStmt : public Stmt {
   ExprPtr expression;
   explicit PrintStmt(ExprPtr expression) : expression{std::move(expression)} {}
   VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, PrintStmt)
+};
+
+struct VarStmt : public Stmt {
+  Token name;
+  std::optional<ExprPtr> expression;
+  explicit VarStmt(Token name, std::optional<ExprPtr> expression)
+      : name{std::move(name)}, expression{std::move(expression)} {}
+  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, VarStmt)
 };
 
 } // namespace lox
