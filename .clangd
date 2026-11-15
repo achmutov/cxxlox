@@ -3,6 +3,9 @@ CompileFlags:
 Style:
   AngledHeaders: ".*"
 Diagnostics:
+  ClangTidy:
+    Add: misc-const-correctness
+    FastCheckFilter: None
   Includes:
     IgnoreHeader:
       - '.*\.cppm'
