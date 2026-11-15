@@ -11,9 +11,7 @@ module;
 #include <optional>
 #include <print>
 #include <span>
-#include <stdexcept>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -24,6 +22,7 @@ import Token;
 import TokenType;
 import utils;
 import InterpreterObject;
+import InterpreterErrors;
 
 #define INTERPRET_RETURN(LEFT, RIGHT, OP, ...)                                 \
   {                                                                            \
@@ -61,44 +60,6 @@ concept InterpretBinaryOperation =
         std::invoke(operation, lhs.value, rhs.value)
       } -> std::same_as<decltype(R::value)>;
     };
-
-export class InterpreterRuntimeException : public std::runtime_error {
-public:
-  explicit InterpreterRuntimeException(std::string &&msg)
-      : std::runtime_error{msg} {}
-
-  constexpr virtual auto name() -> std::string_view = 0;
-
-  virtual auto what2() -> std::string {
-    return std::format("{}: {}", name(), what());
-  }
-};
-
-export class InterpreterTypeException : public InterpreterRuntimeException {
-public:
-  Token token;
-  InterpreterTypeException(Token token, std::string &&msg)
-      : InterpreterRuntimeException{std::move(msg)}, token{std::move(token)} {}
-
-  constexpr auto name() -> std::string_view override {
-    return "TypeException";
-  }
-
-  auto what2() -> std::string override {
-    return std::format("{}: {} [line {}]", name(), what(), token.line);
-  }
-};
-
-export class InterpreterZeroDivisionException
-    : public InterpreterRuntimeException {
-public:
-  InterpreterZeroDivisionException()
-      : InterpreterRuntimeException{"division by zero"} {}
-
-  constexpr auto name() -> std::string_view override {
-    return "ZeroDivisionError";
-  }
-};
 
 template <typename F, typename Input, typename Output>
 concept BinaryOperation = requires(F &f, Input a, Output b) {
