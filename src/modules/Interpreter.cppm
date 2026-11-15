@@ -7,7 +7,10 @@ module;
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <optional>
+#include <print>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -102,13 +105,15 @@ concept BinaryOperation = requires(F &f, Input a, Output b) {
   { std::invoke(f, a, b) } -> std::same_as<Output>;
 };
 
-export struct Interpreter : public Expr::Visitor<InterpreterObject> {
+export struct Interpreter : public Expr::Visitor<InterpreterObject>,
+                            public Stmt::Visitor<void> {
   constexpr static auto binary_numeric_error = "Operands must be numbers";
 
-  void interpret(Expr &expr) {
+  void interpret(const std::span<StmtPtr> stmts) {
     try {
-      const auto val_string = stringify(evaluate(expr));
-      std::cout << val_string << "\n";
+      for (auto &stmt : stmts) {
+        execute(*stmt);
+      }
     } catch (InterpreterRuntimeException &ex) {
       std::cout << ex.what2() << "\n";
       hadRuntimeError = true;
@@ -231,7 +236,17 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject> {
     }
   }
 
+  void visitExpressionStmt(ExpressionStmt &stmt) override {
+    evaluate(*stmt.expression);
+  }
+  void visitPrintStmt(PrintStmt &stmt) override {
+    std::println("{}", stringify(evaluate(*stmt.expression)));
+  }
+
 private:
+  void execute(Stmt &stmt) {
+    stmt.accept(*this);
+  }
   auto evaluate(Expr &expr) -> InterpreterObject {
     return expr.accept(*this);
   }

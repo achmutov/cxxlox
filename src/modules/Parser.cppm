@@ -8,13 +8,13 @@ module;
 #include <format>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <variant>
+#include <vector>
 
 export module Parser;
 import Token;
@@ -22,17 +22,21 @@ import Ast;
 import TokenType;
 import utils;
 
-// expression -> comma
-// comma      -> ternary ("," ternary)*
-// ternary    -> equality "?" ternary ":" ternary
-// equality   -> comparison ("==" | "!=" comparison)*
-// comparison -> term ((">" | "<" | ">=" | "<=") term)*
-// term       -> factor (("+" | "-") factor)*
-// factor     -> unary (( "*" | "/" ) unary)*;
-// unary      -> ("!" | "-") unary
-//             | primary;
-// primary    -> "true" | "false" | "nil" | NUMBER | STRING | grouping;
-// grouping   -> "(" expression ")";
+// program        -> statement* ;
+// statement      -> printStmt | expressionStmt ;
+// printStmt      -> "print" expression ";" ;
+// expressionStmt -> expression ";" ;
+// expression     -> comma ;
+// comma          -> ternary ("," ternary)* ;
+// ternary        -> equality ("?" ternary ":" ternary)? ;
+// equality       -> comparison ("==" | "!=" comparison)* ;
+// comparison     -> term ((">" | "<" | ">=" | "<=") term)* ;
+// term           -> factor (("+" | "-") factor)* ;
+// factor         -> unary (( "*" | "/" ) unary)* ;
+// unary          -> ("!" | "-") unary
+//                 | primary ;
+// primary        -> "true" | "false" | "nil" | NUMBER | STRING | grouping ;
+// grouping       -> "(" expression ")" ;
 
 namespace lox {
 
@@ -62,6 +66,21 @@ export class Parser {
   std::size_t current{0};
 
   // traversal
+  auto statement() -> StmtPtr {
+    if (match({TokenType::PRINT}))
+      return printStatement();
+    return expressionStatement();
+  }
+  auto printStatement() -> StmtPtr {
+    auto expr = expression();
+    consumeOrError(TokenType::SEMICOLON, "Expect ';' after value.");
+    return std::make_unique<PrintStmt>(std::move(expr));
+  }
+  auto expressionStatement() -> StmtPtr {
+    auto expr = expression();
+    consumeOrError(TokenType::SEMICOLON, "Expect ';' after value.");
+    return std::make_unique<ExpressionStmt>(std::move(expr));
+  }
   auto expression() -> ExprPtr {
     return comma();
   }
@@ -222,12 +241,12 @@ public:
   // TODO: should be non-zero length
   // ideally, use superconstructing super elider
   explicit Parser(std::span<const Token> tokens) : tokens{tokens} {}
-  auto parse() -> std::optional<ExprPtr> {
-    try {
-      return expression();
-    } catch (ParseException &ex) {
-      return std::nullopt;
+  auto parse() -> std::vector<StmtPtr> {
+    auto stmts = std::vector<StmtPtr>{};
+    while (!isAtEnd()) {
+      stmts.push_back(statement());
     }
+    return stmts;
   }
 };
 

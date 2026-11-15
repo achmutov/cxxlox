@@ -1,19 +1,17 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <memory>
 #include <ostream>
 #include <print>
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 import Token;
 import Scanner;
 import Ast;
-import AstPrinter;
+// import AstPrinter;
 import Parser;
 import utils;
 import Interpreter;
@@ -23,17 +21,14 @@ static void run(std::string_view script) {
   for (auto &token : tokens)
     std::println("{}", token.toString());
   auto parser = lox::Parser{tokens};
-  auto maybe_expr = parser.parse();
+  auto stmts = parser.parse();
   if (lox::hadError)
     return;
 
-  if (maybe_expr.has_value()) {
-    auto expr = std::move(maybe_expr.value());
-    auto astPrinter = lox::AstPrinter();
-    std::println("{}", expr->accept(astPrinter));
-    lox::Interpreter interpreter{};
-    interpreter.interpret(*expr);
-  }
+  // auto astPrinter = lox::AstPrinter();
+  // std::println("{}", expr->accept(astPrinter));
+  lox::Interpreter interpreter{};
+  interpreter.interpret(stmts);
 }
 
 static void runFile(std::string_view path) {

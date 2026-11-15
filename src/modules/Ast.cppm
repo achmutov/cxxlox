@@ -18,47 +18,64 @@ export namespace lox {
   PREDICATE(UnaryExpr, __VA_ARGS__)                                            \
   PREDICATE(GroupingExpr, __VA_ARGS__)                                         \
   PREDICATE(LiteralExpr, __VA_ARGS__)
-#define VISITOR_TYPES(PREDICATE, ...)                                          \
+
+#define STMTS(STMT, ...)                                                       \
+  STMT(ExpressionStmt, __VA_ARGS__)                                            \
+  STMT(PrintStmt, __VA_ARGS__)
+
+// Forward declare constructs
+#define CONSTRUCT_DECL(CONSTRUCT, ...) struct CONSTRUCT;
+EXPRS(CONSTRUCT_DECL)
+STMTS(CONSTRUCT_DECL)
+#undef CONSTRUCT_DECL
+
+#define VISITOR_EXPR_TYPES(PREDICATE, ...)                                     \
   PREDICATE(std::string, __VA_ARGS__)                                          \
   PREDICATE(InterpreterObject, __VA_ARGS__)
+#define VISITOR_STMT_TYPES(STMT, ...) STMT(void, __VA_ARGS__)
 
-// Forward declare expressions
-#define EXPR_DECL(EXPR, ...) struct EXPR;
-EXPRS(EXPR_DECL)
-#undef EXPR_DECL
-
-#define VISITOR_EXPR_ABS(EXPR, T) virtual auto visit##EXPR(EXPR &) -> T = 0;
-#define ACCEPT_DECL_ABS(T, ...)   virtual auto accept(Visitor<T> &) -> T = 0;
+#define VISITOR_ABS(EXPR, T)    virtual auto visit##EXPR(EXPR &) -> T = 0;
+#define ACCEPT_DECL_ABS(T, ...) virtual auto accept(Visitor<T> &) -> T = 0;
 
 struct Expr {
   template <class T>
   struct Visitor {
-    EXPRS(VISITOR_EXPR_ABS, T)
+    EXPRS(VISITOR_ABS, T)
   };
 
-  VISITOR_TYPES(ACCEPT_DECL_ABS)
+  VISITOR_EXPR_TYPES(ACCEPT_DECL_ABS)
   virtual ~Expr() = default;
 };
 
-using ExprPtr = std::unique_ptr<Expr>;
+struct Stmt {
+  template <class T>
+  struct Visitor {
+    STMTS(VISITOR_ABS, T)
+  };
+  VISITOR_STMT_TYPES(ACCEPT_DECL_ABS)
+  virtual ~Stmt() = default;
+};
 
-#undef VISITOR_EXPR_ABS
+using ExprPtr = std::unique_ptr<Expr>;
+using StmtPtr = std::unique_ptr<Stmt>;
+
+#undef VISITOR_ABS
 #undef ACCEPT_DECL_ABS
 
 using ParseLiteral = std::variant<std::monostate, std::string, double, bool>;
 
-#define EXPR_ACCEPT_T(T, EXPR)                                                 \
+#define CONSTRUCT_ACCEPT_T(T, CONSTRUCT)                                       \
   auto accept(Visitor<T> &visitor) -> T override {                             \
-    return visitor.visit##EXPR(*this);                                         \
+    return visitor.visit##CONSTRUCT(*this);                                    \
   }
 
-#define EXPR_ACCEPT(T) EXPR_ACCEPT_T(T, EXPR)
+#define CONSTRUCT_ACCEPT(T) CONSTRUCT_ACCEPT_T(T, CONSTRUCT)
 
 struct TernaryExpr : public Expr {
   ExprPtr cond, left, right;
   TernaryExpr(ExprPtr cond, ExprPtr left, ExprPtr right)
       : cond{std::move(cond)}, left{std::move(left)}, right{std::move(right)} {}
-  VISITOR_TYPES(EXPR_ACCEPT_T, TernaryExpr)
+  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, TernaryExpr)
 };
 
 struct BinaryExpr : public Expr {
@@ -66,7 +83,7 @@ struct BinaryExpr : public Expr {
   ExprPtr left, right;
   BinaryExpr(Token op, ExprPtr left, ExprPtr right)
       : op{std::move(op)}, left(std::move(left)), right(std::move(right)) {}
-  VISITOR_TYPES(EXPR_ACCEPT_T, BinaryExpr)
+  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, BinaryExpr)
 };
 
 struct UnaryExpr : public Expr {
@@ -74,7 +91,7 @@ struct UnaryExpr : public Expr {
   ExprPtr right;
   UnaryExpr(Token op, ExprPtr right)
       : op{std::move(op)}, right(std::move(right)) {}
-  VISITOR_TYPES(EXPR_ACCEPT_T, UnaryExpr)
+  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, UnaryExpr)
 };
 
 struct GroupingExpr : public Expr {
@@ -82,13 +99,26 @@ struct GroupingExpr : public Expr {
   explicit GroupingExpr(ExprPtr expression)
       : expression(std::move(expression)) {}
 
-  VISITOR_TYPES(EXPR_ACCEPT_T, GroupingExpr)
+  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, GroupingExpr)
 };
 
 struct LiteralExpr : public Expr {
   ParseLiteral literal;
   explicit LiteralExpr(ParseLiteral literal) : literal{std::move(literal)} {}
-  VISITOR_TYPES(EXPR_ACCEPT_T, LiteralExpr)
+  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, LiteralExpr)
+};
+
+struct ExpressionStmt : public Stmt {
+  ExprPtr expression;
+  explicit ExpressionStmt(ExprPtr expression)
+      : expression{std::move(expression)} {}
+  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, ExpressionStmt)
+};
+
+struct PrintStmt : public Stmt {
+  ExprPtr expression;
+  explicit PrintStmt(ExprPtr expression) : expression{std::move(expression)} {}
+  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, PrintStmt)
 };
 
 } // namespace lox
