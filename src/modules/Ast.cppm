@@ -4,6 +4,7 @@ module;
 #include <string>
 #include <utility>
 #include <variant>
+#include <vector>
 
 export module Ast;
 import Token;
@@ -24,7 +25,8 @@ export namespace lox {
 #define STMTS(STMT, ...)                                                       \
   STMT(ExpressionStmt, __VA_ARGS__)                                            \
   STMT(PrintStmt, __VA_ARGS__)                                                 \
-  STMT(VarStmt, __VA_ARGS__)
+  STMT(VarStmt, __VA_ARGS__)                                                   \
+  STMT(BlockStmt, __VA_ARGS__)
 
 // Forward declare constructs
 #define CONSTRUCT_DECL(CONSTRUCT, ...) struct CONSTRUCT;
@@ -144,6 +146,12 @@ struct VarStmt : public Stmt {
   explicit VarStmt(Token name, ExprPtr expression)
       : name{std::move(name)}, expression{std::move(expression)} {}
   VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, VarStmt)
+};
+
+struct BlockStmt : public Stmt {
+  std::vector<StmtPtr> stmts;
+  explicit BlockStmt(std::vector<StmtPtr> stmts) : stmts{std::move(stmts)} {}
+  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, BlockStmt)
 };
 
 } // namespace lox

@@ -222,6 +222,17 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     env.define(name, value);
   }
 
+  void visitBlockStmt(BlockStmt &stmt) override {
+    auto previous = std::move(env);
+    const auto _ = Defer([this, &previous]() { env = std::move(previous); });
+
+    auto currentEnv = Environment(&previous);
+    env = std::move(currentEnv);
+    for (auto &stmt_ : stmt.stmts) {
+      execute(*stmt_);
+    }
+  }
+
 private:
   Environment env;
 

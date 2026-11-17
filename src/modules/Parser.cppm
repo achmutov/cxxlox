@@ -26,7 +26,8 @@ import utils;
 
 // program        -> declaration* ;
 // declaration    -> varDecl | statement ;
-// statement      -> printStmt | expressionStmt ;
+// statement      -> printStmt | expressionStmt | block ;
+// block          -> "{" declaration* "}"
 // printStmt      -> "print" expression ";" ;
 // expressionStmt -> expression ";" ;
 // expression     -> comma ;
@@ -96,12 +97,23 @@ export class Parser {
   auto statement() -> StmtPtr {
     if (match({TokenType::PRINT}))
       return printStatement();
+    if (match({TokenType::LEFT_BRACE}))
+      return block();
     return expressionStatement();
   }
   auto printStatement() -> StmtPtr {
     auto expr = expression();
     consumeOrError(TokenType::SEMICOLON, "Expect ';' after value.");
     return std::make_unique<PrintStmt>(std::move(expr));
+  }
+  auto block() -> StmtPtr {
+    auto stmts = std::vector<StmtPtr>{};
+    while (!check(TokenType::RIGHT_BRACE)) {
+      stmts.push_back(declaration());
+    }
+    consumeOrError(TokenType::RIGHT_BRACE,
+                   "Expect '}' at the end of the block");
+    return std::make_unique<BlockStmt>(std::move(stmts));
   }
   auto expressionStatement() -> StmtPtr {
     auto expr = expression();

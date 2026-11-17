@@ -145,4 +145,10 @@ struct StringHash {
   }
 };
 
+struct Defer {
+  std::function<void()> callback;
+  ~Defer() {
+    callback();
+  }
+};
 } // namespace lox
