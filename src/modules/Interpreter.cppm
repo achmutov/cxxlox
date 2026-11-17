@@ -211,6 +211,9 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
   void visitExpressionStmt(ExpressionStmt &stmt) override {
     evaluate(*stmt.expression);
   }
+  void visitReplExpressionStmt(ReplExpressionStmt &stmt) override {
+    std::println("{}", stringify(evaluate(*stmt.expression)));
+  }
   void visitPrintStmt(PrintStmt &stmt) override {
     std::println("{}", stringify(evaluate(*stmt.expression)));
   }

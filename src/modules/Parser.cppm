@@ -24,12 +24,14 @@ import utils;
 
 // clang-format off
 
-// program        -> declaration* ;
+// program        -> declaration* EOF ;
 // declaration    -> varDecl | statement ;
-// statement      -> printStmt | expressionStmt | block ;
+// statement      -> printStmt | expressionStmt | replExpressionStmt | block ;
 // block          -> "{" declaration* "}"
 // printStmt      -> "print" expression ";" ;
 // expressionStmt -> expression ";" ;
+// replExpressionStmt
+//                -> expression EOF;
 // expression     -> comma ;
 // comma          -> assignment ("," assignment)* ;
 // assignment     -> IDENTIFIER "=" assignment
@@ -72,6 +74,7 @@ export class ParseException : public std::runtime_error {
 export class Parser {
   const std::span<const Token> tokens;
   std::size_t current{0};
+  bool isRepl = false;
 
   // traversal
   auto declaration() -> StmtPtr {
@@ -108,7 +111,7 @@ export class Parser {
   }
   auto block() -> StmtPtr {
     auto stmts = std::vector<StmtPtr>{};
-    while (!check(TokenType::RIGHT_BRACE)) {
+    while (!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
       stmts.push_back(declaration());
     }
     consumeOrError(TokenType::RIGHT_BRACE,
@@ -117,8 +120,11 @@ export class Parser {
   }
   auto expressionStatement() -> StmtPtr {
     auto expr = expression();
-    consumeOrError(TokenType::SEMICOLON, "Expect ';' after value.");
-    return std::make_unique<ExpressionStmt>(std::move(expr));
+    if (match({TokenType::SEMICOLON}))
+      return std::make_unique<ExpressionStmt>(std::move(expr));
+    if (isRepl && check(TokenType::EOF_))
+      return std::make_unique<ReplExpressionStmt>(std::move(expr));
+    throw error(peek(), "Expect ';' after value.");
   }
   auto expression() -> ExprPtr {
     return comma();
@@ -276,7 +282,7 @@ export class Parser {
   }
 
   [[nodiscard]] auto check(const TokenType type) const -> bool {
-    return !isAtEnd() && type == peek().type;
+    return type == peek().type;
   }
 
   [[nodiscard]] auto isAtEnd() const -> bool {
@@ -294,7 +300,8 @@ export class Parser {
 public:
   // TODO: should be non-zero length
   // ideally, use superconstructing super elider
-  explicit Parser(std::span<const Token> tokens) : tokens{tokens} {}
+  explicit Parser(std::span<const Token> tokens, bool isRepl = false)
+      : tokens{tokens}, isRepl{isRepl} {}
   auto parse() -> std::vector<StmtPtr> {
     auto stmts = std::vector<StmtPtr>{};
     while (!isAtEnd()) {

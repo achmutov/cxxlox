@@ -24,6 +24,7 @@ export namespace lox {
 
 #define STMTS(STMT, ...)                                                       \
   STMT(ExpressionStmt, __VA_ARGS__)                                            \
+  STMT(ReplExpressionStmt, __VA_ARGS__)                                        \
   STMT(PrintStmt, __VA_ARGS__)                                                 \
   STMT(VarStmt, __VA_ARGS__)                                                   \
   STMT(BlockStmt, __VA_ARGS__)
@@ -132,6 +133,13 @@ struct ExpressionStmt : public Stmt {
   explicit ExpressionStmt(ExprPtr expression)
       : expression{std::move(expression)} {}
   VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, ExpressionStmt)
+};
+
+struct ReplExpressionStmt : public Stmt {
+  ExprPtr expression;
+  explicit ReplExpressionStmt(ExprPtr expression)
+      : expression{std::move(expression)} {}
+  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, ReplExpressionStmt)
 };
 
 struct PrintStmt : public Stmt {
