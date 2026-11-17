@@ -8,7 +8,6 @@ module;
 #include <format>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -74,14 +73,14 @@ export class Parser {
   std::size_t current{0};
 
   // traversal
-  auto declaration() -> std::optional<StmtPtr> {
+  auto declaration() -> StmtPtr {
     try {
       if (match({TokenType::VAR}))
         return varDeclaration();
       return statement();
     } catch (ParseException &ex) {
       synchronize();
-      return std::nullopt;
+      return nullptr;
     }
   }
   auto varDeclaration() -> StmtPtr {
@@ -287,11 +286,7 @@ public:
   auto parse() -> std::vector<StmtPtr> {
     auto stmts = std::vector<StmtPtr>{};
     while (!isAtEnd()) {
-      auto decl = declaration();
-      // TODO: do not silently ignore
-      if (decl.has_value()) {
-        stmts.push_back(std::move(decl.value()));
-      }
+      stmts.push_back(declaration());
     }
     return stmts;
   }
