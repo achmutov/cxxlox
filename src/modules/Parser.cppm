@@ -238,7 +238,7 @@ export class Parser {
   }
   auto comparison() -> ExprPtr {
     return binaryExpr<&Parser::term>({TokenType::LESS, TokenType::LESS_EQUAL,
-                                      TokenType::GREATER_EQUAL,
+                                      TokenType::GREATER,
                                       TokenType::GREATER_EQUAL});
   }
   auto term() -> ExprPtr {
