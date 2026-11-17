@@ -26,11 +26,12 @@ import utils;
 
 // program        -> declaration* EOF ;
 // declaration    -> varDecl | statement ;
-// statement      -> printStmt | ifStmt | whileStmt | expressionStmt | replExpressionStmt | block ;
+// statement      -> printStmt | ifStmt | whileStmt | forStmt | expressionStmt | replExpressionStmt | block ;
 // block          -> "{" declaration* "}"
 // printStmt      -> "print" expression ";" ;
 // ifStmt         -> "if" "(" expression ")" statement ( "else" statement )? ;
 // whileStmt      -> "while" "(" expression ")" statement ;
+// forStmt        -> "for" "(" ( varDecl | exprStmt | ";" ) expression? : expression? ")" statement ;
 // expressionStmt -> expression ";" ;
 // replExpressionStmt
 //                -> expression EOF;
@@ -110,6 +111,8 @@ export class Parser {
       return ifStatement();
     if (match({TokenType::WHILE}))
       return whileStatement();
+    if (match({TokenType::FOR}))
+      return forStatement();
     return expressionStatement();
   }
   auto printStatement() -> StmtPtr {
@@ -149,6 +152,47 @@ export class Parser {
     consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after condition");
     auto body = statement();
     return std::make_unique<WhileStmt>(std::move(condition), std::move(body));
+  }
+  auto forStatement() -> StmtPtr {
+    // parse for clauses
+    consumeOrError(TokenType::LEFT_PAREN, "Expect '(' after 'for'");
+    auto initializer =
+        !match({TokenType::SEMICOLON})
+            ? match({TokenType::VAR}) ? varDeclaration() : expressionStatement()
+            : nullptr;
+    auto condition = check(TokenType::SEMICOLON) ? nullptr : expression();
+    consumeOrError(TokenType::SEMICOLON, "Expect ';' after loop condition");
+    auto increment = check(TokenType::RIGHT_PAREN) ? nullptr : expression();
+    consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after for clauses");
+
+    // parse body
+    auto body = statement();
+
+    // desugar for clauses
+    {
+      if (increment) {
+        std::vector<StmtPtr> stmts;
+        stmts.reserve(2);
+        stmts.emplace_back(std::move(body));
+        stmts.emplace_back(
+            std::make_unique<ExpressionStmt>(std::move(increment)));
+        body = std::make_unique<BlockStmt>(std::move(stmts));
+      }
+
+      if (!condition)
+        condition = std::make_unique<LiteralExpr>(true);
+      body = std::make_unique<WhileStmt>(std::move(condition), std::move(body));
+
+      if (initializer) {
+        std::vector<StmtPtr> stmts;
+        stmts.reserve(2);
+        stmts.emplace_back(std::move(initializer));
+        stmts.emplace_back(std::move(body));
+        body = std::make_unique<BlockStmt>(std::move(stmts));
+      }
+    }
+
+    return body;
   }
   auto expression() -> ExprPtr {
     return comma();
