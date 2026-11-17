@@ -83,8 +83,8 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
   }
 
   auto visitTernaryExpr(TernaryExpr &expr) -> InterpreterObject override {
-    auto cond = evaluate(*expr.cond);
-    return isTruthy(cond).value ? evaluate(*expr.left) : evaluate(*expr.right);
+    return isTruthy(evaluate(*expr.cond)).value ? evaluate(*expr.left)
+                                                : evaluate(*expr.right);
   }
 
   auto visitLiteralExpr(LiteralExpr &expr) -> InterpreterObject override {
@@ -236,6 +236,13 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     }
   }
 
+  void visitIfStmt(IfStmt &stmt) override {
+    if (isTruthy(evaluate(*stmt.condition)).value)
+      execute(*stmt.thenBranch);
+    else
+      execute(*stmt.elseBranch);
+  }
+
 private:
   Environment env;
 
@@ -246,7 +253,7 @@ private:
     return expr.accept(*this);
   }
 
-  auto isTruthy(InterpreterObject &object) -> InterpreterBoolean {
+  auto isTruthy(const InterpreterObject &object) -> InterpreterBoolean {
     return InterpreterBoolean(object.visit(
         overloads{[](const InterpreterBoolean v) { return v.value; },
                   [](const InterpreterString &) { return true; },

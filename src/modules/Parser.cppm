@@ -26,9 +26,10 @@ import utils;
 
 // program        -> declaration* EOF ;
 // declaration    -> varDecl | statement ;
-// statement      -> printStmt | expressionStmt | replExpressionStmt | block ;
+// statement      -> printStmt | ifStmt | expressionStmt | replExpressionStmt | block ;
 // block          -> "{" declaration* "}"
 // printStmt      -> "print" expression ";" ;
+// ifStmt         -> "if" "(" expression ")" statement ( "else" statement )? ;
 // expressionStmt -> expression ";" ;
 // replExpressionStmt
 //                -> expression EOF;
@@ -102,6 +103,8 @@ export class Parser {
       return printStatement();
     if (match({TokenType::LEFT_BRACE}))
       return block();
+    if (match({TokenType::IF}))
+      return ifStatement();
     return expressionStatement();
   }
   auto printStatement() -> StmtPtr {
@@ -125,6 +128,15 @@ export class Parser {
     if (isRepl && check(TokenType::EOF_))
       return std::make_unique<ReplExpressionStmt>(std::move(expr));
     throw error(peek(), "Expect ';' after value.");
+  }
+  auto ifStatement() -> StmtPtr {
+    consumeOrError(TokenType::LEFT_PAREN, "Expect '(' after 'if'");
+    auto conditional = expression();
+    consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after condition");
+    auto thenBranch = statement();
+    auto elseBranch = match({TokenType::ELSE}) ? statement() : nullptr;
+    return std::make_unique<IfStmt>(
+        std::move(conditional), std::move(thenBranch), std::move(elseBranch));
   }
   auto expression() -> ExprPtr {
     return comma();
