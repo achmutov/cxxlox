@@ -37,7 +37,9 @@ import utils;
 // comma          -> assignment ("," assignment)* ;
 // assignment     -> IDENTIFIER "=" assignment
 //                 | ternary
-// ternary        -> equality ("?" ternary ":" ternary)? ;
+// ternary        -> logical_or ("?" ternary ":" ternary)? ;
+// logical_or     -> logical_and ("or" logical_and)* ;
+// logical_and    -> equality ("and" equality)* ;
 // equality       -> comparison ("==" | "!=" comparison)* ;
 // comparison     -> term ((">" | "<" | ">=" | "<=") term)* ;
 // term           -> factor (("+" | "-") factor)* ;
@@ -157,7 +159,7 @@ export class Parser {
     return expr;
   }
   auto ternary() -> ExprPtr {
-    auto expr = equality();
+    auto expr = logicalOr();
     while (match({TokenType::QUESTION_MARK})) {
       auto left = ternary();
       consumeOrError(TokenType::COLON,
@@ -167,6 +169,13 @@ export class Parser {
                                            std::move(right));
     }
     return expr;
+  }
+
+  auto logicalOr() -> ExprPtr {
+    return binaryExpr<&Parser::logicalAnd, LogicalExpr>({TokenType::OR});
+  };
+  auto logicalAnd() -> ExprPtr {
+    return binaryExpr<&Parser::equality, LogicalExpr>({TokenType::AND});
   }
 
   auto equality() -> ExprPtr {
@@ -224,14 +233,13 @@ export class Parser {
     throw error(peek(), "Expect expression.");
   }
 
-  template <auto nextExpr>
+  template <auto nextExpr, class T = BinaryExpr>
   auto binaryExpr(const std::span<const TokenType> ts) -> ExprPtr {
     auto expr = std::invoke(nextExpr, this);
     while (match(ts)) {
       const auto op = previous();
       auto right = std::invoke(nextExpr, this);
-      expr =
-          std::make_unique<BinaryExpr>(op, std::move(expr), std::move(right));
+      expr = std::make_unique<T>(op, std::move(expr), std::move(right));
     }
     return expr;
   }

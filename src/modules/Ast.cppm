@@ -20,7 +20,8 @@ export namespace lox {
   PREDICATE(GroupingExpr, __VA_ARGS__)                                         \
   PREDICATE(LiteralExpr, __VA_ARGS__)                                          \
   PREDICATE(VarExpr, __VA_ARGS__)                                              \
-  PREDICATE(AssignExpr, __VA_ARGS__)
+  PREDICATE(AssignExpr, __VA_ARGS__)                                           \
+  PREDICATE(LogicalExpr, __VA_ARGS__)
 
 #define STMTS(STMT, ...)                                                       \
   STMT(ExpressionStmt, __VA_ARGS__)                                            \
@@ -127,6 +128,14 @@ struct AssignExpr : public Expr {
   explicit AssignExpr(Token name, ExprPtr value)
       : name{std::move(name)}, value{std::move(value)} {}
   VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, AssignExpr)
+};
+
+struct LogicalExpr : public Expr {
+  Token op;
+  ExprPtr left, right;
+  explicit LogicalExpr(Token op, ExprPtr left, ExprPtr right)
+      : op{std::move(op)}, left(std::move(left)), right(std::move(right)) {}
+  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, LogicalExpr)
 };
 
 struct ExpressionStmt : public Stmt {

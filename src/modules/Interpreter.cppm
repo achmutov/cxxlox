@@ -208,6 +208,23 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     return value;
   }
 
+  auto visitLogicalExpr(LogicalExpr &expr) -> InterpreterObject override {
+    auto left_obj = evaluate(*expr.left);
+    switch (expr.op.type) {
+    case TokenType::OR:
+      if (isTruthy(left_obj).value)
+        return left_obj;
+      break;
+    case TokenType::AND:
+      if (!isTruthy(left_obj).value)
+        return left_obj;
+      break;
+    default:
+      panic("Invalid logical token: {}", expr.op.toString());
+    }
+    return evaluate(*expr.right);
+  }
+
   void visitExpressionStmt(ExpressionStmt &stmt) override {
     evaluate(*stmt.expression);
   }
