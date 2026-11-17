@@ -216,9 +216,8 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
   }
   void visitVarStmt(VarStmt &stmt) override {
     const auto name = stmt.name.lexeme;
-    const auto value = stmt.expression.has_value()
-                           ? evaluate(*stmt.expression.value())
-                           : InterpreterNil{};
+    const auto value = stmt.expression != nullptr ? evaluate(*stmt.expression)
+                                                  : InterpreterNil{};
 
     env.define(name, value);
   }

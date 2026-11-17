@@ -1,7 +1,6 @@
 module;
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -141,8 +140,8 @@ struct PrintStmt : public Stmt {
 
 struct VarStmt : public Stmt {
   Token name;
-  std::optional<ExprPtr> expression;
-  explicit VarStmt(Token name, std::optional<ExprPtr> expression)
+  ExprPtr expression;
+  explicit VarStmt(Token name, ExprPtr expression)
       : name{std::move(name)}, expression{std::move(expression)} {}
   VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, VarStmt)
 };

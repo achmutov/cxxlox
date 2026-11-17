@@ -87,7 +87,7 @@ export class Parser {
   auto varDeclaration() -> StmtPtr {
     const Token name =
         consumeOrError(TokenType::IDENTIFIER, "Expect variable name.");
-    std::optional<ExprPtr> initializer = std::nullopt;
+    ExprPtr initializer = nullptr;
     if (match({TokenType::EQUAL}))
       initializer = expression();
     consumeOrError(TokenType::SEMICOLON,
