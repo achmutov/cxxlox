@@ -29,7 +29,8 @@ export namespace lox {
   STMT(PrintStmt, __VA_ARGS__)                                                 \
   STMT(VarStmt, __VA_ARGS__)                                                   \
   STMT(BlockStmt, __VA_ARGS__)                                                 \
-  STMT(IfStmt, __VA_ARGS__)
+  STMT(IfStmt, __VA_ARGS__)                                                    \
+  STMT(WhileStmt, __VA_ARGS__)
 
 // Forward declare constructs
 #define CONSTRUCT_DECL(CONSTRUCT, ...) struct CONSTRUCT;
@@ -180,6 +181,14 @@ struct IfStmt : public Stmt {
       : condition{std::move(condition)}, thenBranch{std::move(thenBranch)},
         elseBranch{std::move(elseBranch)} {}
   VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, IfStmt)
+};
+
+struct WhileStmt : public Stmt {
+  ExprPtr condition;
+  StmtPtr body;
+  explicit WhileStmt(ExprPtr condition, StmtPtr body)
+      : condition{std::move(condition)}, body{std::move(body)} {}
+  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, WhileStmt)
 };
 
 } // namespace lox

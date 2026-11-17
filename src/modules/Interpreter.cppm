@@ -260,6 +260,11 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
       execute(*stmt.elseBranch);
   }
 
+  void visitWhileStmt(WhileStmt &stmt) override {
+    while (isTruthy(evaluate(*stmt.condition)).value)
+      execute(*stmt.body);
+  }
+
 private:
   Environment env;
 

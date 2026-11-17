@@ -26,10 +26,11 @@ import utils;
 
 // program        -> declaration* EOF ;
 // declaration    -> varDecl | statement ;
-// statement      -> printStmt | ifStmt | expressionStmt | replExpressionStmt | block ;
+// statement      -> printStmt | ifStmt | whileStmt | expressionStmt | replExpressionStmt | block ;
 // block          -> "{" declaration* "}"
 // printStmt      -> "print" expression ";" ;
 // ifStmt         -> "if" "(" expression ")" statement ( "else" statement )? ;
+// whileStmt      -> "while" "(" expression ")" statement ;
 // expressionStmt -> expression ";" ;
 // replExpressionStmt
 //                -> expression EOF;
@@ -107,6 +108,8 @@ export class Parser {
       return block();
     if (match({TokenType::IF}))
       return ifStatement();
+    if (match({TokenType::WHILE}))
+      return whileStatement();
     return expressionStatement();
   }
   auto printStatement() -> StmtPtr {
@@ -139,6 +142,13 @@ export class Parser {
     auto elseBranch = match({TokenType::ELSE}) ? statement() : nullptr;
     return std::make_unique<IfStmt>(
         std::move(conditional), std::move(thenBranch), std::move(elseBranch));
+  }
+  auto whileStatement() -> StmtPtr {
+    consumeOrError(TokenType::LEFT_PAREN, "Expect '(' after 'while'");
+    auto condition = expression();
+    consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after condition");
+    auto body = statement();
+    return std::make_unique<WhileStmt>(std::move(condition), std::move(body));
   }
   auto expression() -> ExprPtr {
     return comma();
