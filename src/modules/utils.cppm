@@ -114,6 +114,8 @@ auto tokenType(TokenType type) -> std::optional<std::string_view> {
     return {"VAR"};
   case TokenType::WHILE:
     return {"WHILE"};
+  case TokenType::BREAK:
+    return {"BREAK"};
   case TokenType::EOF_:
     return {"EOF_"};
   default:

@@ -256,13 +256,22 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
   void visitIfStmt(IfStmt &stmt) override {
     if (isTruthy(evaluate(*stmt.condition)).value)
       execute(*stmt.thenBranch);
-    else
+    else if (stmt.elseBranch)
       execute(*stmt.elseBranch);
   }
 
   void visitWhileStmt(WhileStmt &stmt) override {
     while (isTruthy(evaluate(*stmt.condition)).value)
-      execute(*stmt.body);
+      try {
+        execute(*stmt.body);
+      } catch (InterpreterBreakException &) {
+        break;
+      }
+  }
+
+  void visitBreakStmt(BreakStmt &stmt) override {
+    (void)stmt;
+    throw InterpreterBreakException();
   }
 
 private:

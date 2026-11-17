@@ -53,6 +53,7 @@ enum class TokenType : std::uint8_t {
   TRUE,
   VAR,
   WHILE,
+  BREAK,
   EOF_
 };
 

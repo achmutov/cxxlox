@@ -23,6 +23,7 @@ static constexpr auto lookup_keyword(std::string_view keyword)
   // SORTED
   static constexpr std::array keywords{
       std::pair{"and"sv, TokenType::AND},
+      std::pair{"break"sv, TokenType::BREAK},
       std::pair{"class"sv, TokenType::CLASS},
       std::pair{"else"sv, TokenType::ELSE},
       std::pair{"false"sv, TokenType::FALSE},

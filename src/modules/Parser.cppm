@@ -26,7 +26,7 @@ import utils;
 
 // program        -> declaration* EOF ;
 // declaration    -> varDecl | statement ;
-// statement      -> printStmt | ifStmt | whileStmt | forStmt | expressionStmt | replExpressionStmt | block ;
+// statement      -> printStmt | ifStmt | whileStmt | forStmt | expressionStmt | replExpressionStmt | block | break ;
 // block          -> "{" declaration* "}"
 // printStmt      -> "print" expression ";" ;
 // ifStmt         -> "if" "(" expression ")" statement ( "else" statement )? ;
@@ -80,6 +80,7 @@ export class Parser {
   const std::span<const Token> tokens;
   std::size_t current{0};
   bool isRepl = false;
+  int loopDepth = 0;
 
   // traversal
   auto declaration() -> StmtPtr {
@@ -113,6 +114,8 @@ export class Parser {
       return whileStatement();
     if (match({TokenType::FOR}))
       return forStatement();
+    if (match({TokenType::BREAK}))
+      return breakStatement();
     return expressionStatement();
   }
   auto printStatement() -> StmtPtr {
@@ -150,7 +153,7 @@ export class Parser {
     consumeOrError(TokenType::LEFT_PAREN, "Expect '(' after 'while'");
     auto condition = expression();
     consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after condition");
-    auto body = statement();
+    auto body = loopBodyStatement();
     return std::make_unique<WhileStmt>(std::move(condition), std::move(body));
   }
   auto forStatement() -> StmtPtr {
@@ -166,7 +169,7 @@ export class Parser {
     consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after for clauses");
 
     // parse body
-    auto body = statement();
+    auto body = loopBodyStatement();
 
     // desugar for clauses
     {
@@ -193,6 +196,18 @@ export class Parser {
     }
 
     return body;
+  }
+  auto breakStatement() -> StmtPtr {
+    if (loopDepth > 0) {
+      consumeOrError(TokenType::SEMICOLON, "Expect ';' after break.");
+      return std::make_unique<BreakStmt>();
+    }
+    throw error(previous(), "'break' is not enclosed in a loop");
+  }
+  auto loopBodyStatement() -> StmtPtr {
+    loopDepth += 1;
+    const auto _ = Defer([this]() { this->loopDepth -= 1; });
+    return statement();
   }
   auto expression() -> ExprPtr {
     return comma();

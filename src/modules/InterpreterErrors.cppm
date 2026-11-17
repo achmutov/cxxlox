@@ -50,4 +50,13 @@ public:
   }
 };
 
+class InterpreterBreakException : public InterpreterRuntimeException {
+public:
+  InterpreterBreakException()
+      : InterpreterRuntimeException{"unenclosed 'break' keyword"} {}
+  constexpr auto name() -> std::string_view override {
+    return "BreakException";
+  }
+};
+
 } // namespace lox
