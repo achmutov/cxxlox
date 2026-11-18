@@ -1,9 +1,12 @@
 module;
 
+#include <cstddef>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <variant>
+#include <vector>
 
 export module InterpreterObject;
 
@@ -42,8 +45,18 @@ public:
   }
 };
 
-using InterpreterObject = std::variant<InterpreterNil, InterpreterString,
-                                       InterpreterNumber, InterpreterBoolean>;
+struct InterpreterCallableI;
+using InterpreterCallable = std::shared_ptr<InterpreterCallableI>;
+
+using InterpreterObject =
+    std::variant<InterpreterNil, InterpreterString, InterpreterNumber,
+                 InterpreterBoolean, InterpreterCallable>;
+
+struct InterpreterCallableI {
+  virtual auto arity() -> std::size_t = 0;
+  virtual auto call(std::vector<InterpreterObject> args)
+      -> InterpreterObject = 0;
+};
 
 constexpr auto interpreterTypeName(const InterpreterObject &object)
     -> std::string_view {
@@ -52,7 +65,8 @@ constexpr auto interpreterTypeName(const InterpreterObject &object)
       [](const InterpreterString &) { return "string"sv; },
       [](const InterpreterNil) { return "nil"sv; },
       [](const InterpreterBoolean) { return "boolean"sv; },
-      [](const InterpreterNumber &) { return "number"sv; }});
+      [](const InterpreterNumber &) { return "number"sv; },
+      [](const InterpreterCallable &) { return "callable"sv; }});
 }
 
 auto stringify(InterpreterObject obj) -> std::string {
@@ -62,9 +76,8 @@ auto stringify(InterpreterObject obj) -> std::string {
       [](const InterpreterBoolean value) {
         return std::string{value.value ? "true" : "false"};
       },
-      [](const InterpreterNumber value) {
-        return std::to_string(value.value);
-      }});
+      [](const InterpreterNumber value) { return std::to_string(value.value); },
+      [](const InterpreterCallable &) { return std::string("callable"); }});
 }
 
 } // namespace lox

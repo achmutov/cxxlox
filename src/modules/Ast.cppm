@@ -21,7 +21,8 @@ export namespace lox {
   PREDICATE(LiteralExpr, __VA_ARGS__)                                          \
   PREDICATE(VarExpr, __VA_ARGS__)                                              \
   PREDICATE(AssignExpr, __VA_ARGS__)                                           \
-  PREDICATE(LogicalExpr, __VA_ARGS__)
+  PREDICATE(LogicalExpr, __VA_ARGS__)                                          \
+  PREDICATE(CallExpr, __VA_ARGS__)
 
 #define STMTS(STMT, ...)                                                       \
   STMT(ExpressionStmt, __VA_ARGS__)                                            \
@@ -138,6 +139,16 @@ struct LogicalExpr : public Expr {
   explicit LogicalExpr(Token op, ExprPtr left, ExprPtr right)
       : op{std::move(op)}, left(std::move(left)), right(std::move(right)) {}
   VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, LogicalExpr)
+};
+
+struct CallExpr : public Expr {
+  ExprPtr callee;
+  std::vector<ExprPtr> args;
+  Token rightParen;
+  explicit CallExpr(ExprPtr callee, std::vector<ExprPtr> args, Token rightParen)
+      : callee{std::move(callee)}, args{std::move(args)},
+        rightParen{std::move(rightParen)} {}
+  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, CallExpr)
 };
 
 struct ExpressionStmt : public Stmt {

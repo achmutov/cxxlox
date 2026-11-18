@@ -46,8 +46,9 @@ import utils;
 // comparison     -> term ((">" | "<" | ">=" | "<=") term)* ;
 // term           -> factor (("+" | "-") factor)* ;
 // factor         -> unary (( "*" | "/" ) unary)* ;
-// unary          -> ("!" | "-") unary
-//                 | primary ;
+// unary          -> ("!" | "-") unary | call
+// call           -> primary ( "(" arguments? ")" )* ;
+// arguments      -> assignment ("," assignment )* ","? ;
 // primary        -> "true" | "false" | "nil" | NUMBER | STRING | grouping | IDENTIFIER;
 // grouping       -> "(" expression ")" ;
 
@@ -268,7 +269,29 @@ export class Parser {
       auto right = unary();
       return std::make_unique<UnaryExpr>(op, std::move(right));
     }
-    return primary();
+    return call();
+  }
+  auto call() -> ExprPtr {
+    auto expr = primary();
+    while (match({TokenType::LEFT_PAREN}))
+      expr = finishCall(std::move(expr));
+    return expr;
+  }
+  auto finishCall(ExprPtr callee) -> ExprPtr {
+    std::vector<ExprPtr> args;
+
+    if (!check(TokenType::RIGHT_PAREN))
+      do {
+        if (args.size() >= 255)
+          throw error(peek(), "Can't have more than 255 arguments");
+        args.emplace_back(assignment());
+      } while (match({TokenType::COMMA}) && !check(TokenType::RIGHT_PAREN));
+
+    auto rightParen = consumeOrError(TokenType::RIGHT_PAREN,
+                                     "Expect ')' after function arguments");
+
+    return std::make_unique<CallExpr>(std::move(callee), std::move(args),
+                                      std::move(rightParen));
   }
   auto primary() -> ExprPtr {
     if (match({TokenType::FALSE}))

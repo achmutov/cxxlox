@@ -10,11 +10,13 @@ module;
 #include <memory>
 #include <optional>
 #include <print>
+#include <ranges>
 #include <span>
 #include <string>
 #include <type_traits>
 #include <utility>
 #include <variant>
+#include <vector>
 
 export module Interpreter;
 import Ast;
@@ -225,6 +227,30 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     return evaluate(*expr.right);
   }
 
+  auto visitCallExpr(CallExpr &expr) -> InterpreterObject override {
+    auto callee = evaluate(*expr.callee);
+    auto args = expr.args |
+                std::ranges::views::transform(
+                    [this](const auto &v) { return evaluate(*v); }) |
+                std::ranges::to<std::vector<InterpreterObject>>();
+
+    if (const auto *object = std::get_if<InterpreterCallable>(&callee)) {
+      // check arity
+      {
+        const auto arity = object->get()->arity();
+        if (args.size() != arity)
+          throw InterpreterTypeException(
+              expr.rightParen, std::format("Expected {} arguments but got {}",
+                                           arity, args.size()));
+      }
+
+      return object->get()->call(std::move(args));
+    }
+
+    throw InterpreterTypeException(expr.rightParen,
+                                   "Can only call functions and classes.");
+  }
+
   void visitExpressionStmt(ExpressionStmt &stmt) override {
     evaluate(*stmt.expression);
   }
@@ -289,7 +315,8 @@ private:
         overloads{[](const InterpreterBoolean v) { return v.value; },
                   [](const InterpreterString &) { return true; },
                   [](const InterpreterNumber) { return true; },
-                  [](const InterpreterNil) { return false; }}));
+                  [](const InterpreterNil) { return false; },
+                  [](const InterpreterCallable &) { return true; }}));
   }
 
   auto isEqual(const InterpreterObject &left, const InterpreterObject &right)
