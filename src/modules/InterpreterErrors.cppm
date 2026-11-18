@@ -6,7 +6,7 @@ module;
 #include <string_view>
 #include <utility>
 
-export module InterpreterErrors;
+export module Interpreter.Errors;
 import Token;
 
 export namespace lox {

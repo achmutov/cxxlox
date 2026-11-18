@@ -23,9 +23,9 @@ import Ast;
 import Token;
 import TokenType;
 import utils;
-import InterpreterObject;
-import InterpreterErrors;
-import Environment;
+import Interpreter.Object;
+import Interpreter.Errors;
+import Interpreter.Environment;
 
 #define INTERPRET_RETURN(LEFT, RIGHT, OP, ...)                                 \
   {                                                                            \

@@ -8,7 +8,7 @@ module;
 
 export module Ast;
 import Token;
-import InterpreterObject;
+import Interpreter.Object;
 
 export namespace lox {
 
