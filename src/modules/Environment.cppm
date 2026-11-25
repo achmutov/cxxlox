@@ -11,18 +11,18 @@ import Interpreter.Object;
 import Interpreter.Errors;
 import utils;
 
-namespace lox {
+namespace lox::interpreter {
 
 export class Environment {
 public:
   Environment() = default;
   explicit Environment(Environment *enclosing) : enclosing{enclosing} {}
 
-  void define(std::string name, InterpreterObject value) {
+  void define(std::string name, Object value) {
     values.insert({std::move(name), std::move(value)});
   }
 
-  void assign(std::string_view name, InterpreterObject value) {
+  void assign(std::string_view name, Object value) {
     if (const auto it = values.find(name); it != values.end()) {
       it->second = std::move(value);
     } else if (enclosing != nullptr) {
@@ -32,7 +32,7 @@ public:
     }
   }
 
-  auto get(std::string_view name) -> InterpreterObject {
+  auto get(std::string_view name) -> Object {
     if (const auto it = values.find(name); it != values.end())
       return it->second;
     if (enclosing != nullptr)
@@ -41,16 +41,13 @@ public:
   }
 
 private:
-  std::unordered_map<std::string, InterpreterObject, StringHash,
-                     std::equal_to<>>
-      values;
+  std::unordered_map<std::string, Object, StringHash, std::equal_to<>> values;
 
   Environment *enclosing;
 
   [[noreturn]] void undefinedVariable(std::string_view name) {
-    throw interpreter::RuntimeException(
-        std::format("Undefined variable '{}'.", name));
+    throw RuntimeException(std::format("Undefined variable '{}'.", name));
   }
 };
 
-} // namespace lox
+} // namespace lox::interpreter

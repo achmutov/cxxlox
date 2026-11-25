@@ -52,8 +52,9 @@ struct IsVariantAlternative<T, std::variant<Alternatives...>>
     : std::bool_constant<(std::same_as<T, Alternatives> || ...)> {};
 
 template <typename T>
-concept InterpreterValue = IsVariantAlternative<T, InterpreterObject>::value &&
-                           requires(const T &object) { object.value; };
+concept InterpreterValue =
+    IsVariantAlternative<T, interpreter::Object>::value &&
+    requires(const T &object) { object.value; };
 
 template <typename F, typename T, typename R>
 concept InterpretBinaryOperation =
@@ -69,7 +70,7 @@ concept BinaryOperation = requires(F &f, Input a, Output b) {
   { std::invoke(f, a, b) } -> std::same_as<Output>;
 };
 
-export struct Interpreter : public Expr::Visitor<InterpreterObject>,
+export struct Interpreter : public Expr::Visitor<interpreter::Object>,
                             public Stmt::Visitor<void> {
   constexpr static auto binary_numeric_error = "Operands must be numbers";
 
@@ -84,34 +85,36 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     }
   }
 
-  auto visitTernaryExpr(TernaryExpr &expr) -> InterpreterObject override {
+  auto visitTernaryExpr(TernaryExpr &expr) -> interpreter::Object override {
     return isTruthy(evaluate(*expr.cond)).value ? evaluate(*expr.left)
                                                 : evaluate(*expr.right);
   }
 
-  auto visitLiteralExpr(LiteralExpr &expr) -> InterpreterObject override {
-    return expr.literal.visit(overloads{
-        [](std::string value) -> InterpreterObject {
-          return InterpreterString{std::move(value)};
-        },
-        [](double value) -> InterpreterObject {
-          return InterpreterNumber{value};
-        },
-        [](bool value) -> InterpreterObject {
-          return InterpreterBoolean{value};
-        },
-        [](std::monostate) -> InterpreterObject { return InterpreterNil{}; }});
+  auto visitLiteralExpr(LiteralExpr &expr) -> interpreter::Object override {
+    return expr.literal.visit(
+        overloads{[](std::string value) -> interpreter::Object {
+                    return interpreter::String{std::move(value)};
+                  },
+                  [](double value) -> interpreter::Object {
+                    return interpreter::Number{value};
+                  },
+                  [](bool value) -> interpreter::Object {
+                    return interpreter::Boolean{value};
+                  },
+                  [](std::monostate) -> interpreter::Object {
+                    return interpreter::Nil{};
+                  }});
   } // namespace lox
 
-  auto visitGroupingExpr(GroupingExpr &expr) -> InterpreterObject override {
+  auto visitGroupingExpr(GroupingExpr &expr) -> interpreter::Object override {
     return evaluate(*expr.expression);
   }
 
-  auto visitUnaryExpr(UnaryExpr &expr) -> InterpreterObject override {
+  auto visitUnaryExpr(UnaryExpr &expr) -> interpreter::Object override {
     auto right = evaluate(*expr.right);
     switch (expr.op.type) {
     case TokenType::MINUS:
-      if (auto p = std::get_if<InterpreterNumber>(&right))
+      if (auto p = std::get_if<interpreter::Number>(&right))
         return -*p;
       throw interpreter::TypeException(expr.op, "Operand must be a number");
     case TokenType::BANG:
@@ -122,13 +125,13 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     }
   }
 
-  auto visitBinaryExpr(BinaryExpr &expr) -> InterpreterObject override {
+  auto visitBinaryExpr(BinaryExpr &expr) -> interpreter::Object override {
     auto left = evaluate(*expr.left);
     auto right = evaluate(*expr.right);
     switch (expr.op.type) {
     case TokenType::SLASH: {
-      const auto *left_value = std::get_if<InterpreterNumber>(&left);
-      const auto *right_value = std::get_if<InterpreterNumber>(&right);
+      const auto *left_value = std::get_if<interpreter::Number>(&left);
+      const auto *right_value = std::get_if<interpreter::Number>(&right);
 
       if (!left_value || !right_value)
         throw interpreter::TypeException(expr.op, binary_numeric_error);
@@ -137,7 +140,7 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
       if (std::abs(right_value->value) < std::numeric_limits<double>::epsilon())
         throw interpreter::ZeroDivisionException{};
 
-      return InterpreterNumber{left_value->value / right_value->value};
+      return interpreter::Number{left_value->value / right_value->value};
     }
     case TokenType::STAR:
       return interpretNumericalBinaryExpr(left, right, std::multiplies<>(),
@@ -145,24 +148,25 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     case TokenType::MINUS:
       return interpretNumericalBinaryExpr(left, right, std::minus<>(), expr.op);
     case TokenType::PLUS: {
-      INTERPRET_RETURN(left, right, std::plus, InterpreterNumber)
-      INTERPRET_RETURN(left, right, std::plus, InterpreterString)
+      INTERPRET_RETURN(left, right, std::plus, interpreter::Number)
+      INTERPRET_RETURN(left, right, std::plus, interpreter::String)
 
       // EVIL
       const auto result = std::visit(
-          overloads{
-              [](InterpreterNumber left,
-                 InterpreterString &right) -> std::optional<InterpreterObject> {
-                return InterpreterString{stringify(InterpreterObject{left}) +
-                                         right.value};
-              },
-              [](InterpreterString &left,
-                 InterpreterNumber right) -> std::optional<InterpreterObject> {
-                return InterpreterString{left.value +
-                                         stringify(InterpreterObject{right})};
-              },
-              [](const auto &, const auto &)
-                  -> std::optional<InterpreterObject> { return std::nullopt; }},
+          overloads{[](interpreter::Number left, interpreter::String &right)
+                        -> std::optional<interpreter::Object> {
+                      return interpreter::String{
+                          stringify(interpreter::Object{left}) + right.value};
+                    },
+                    [](interpreter::String &left, interpreter::Number right)
+                        -> std::optional<interpreter::Object> {
+                      return interpreter::String{
+                          left.value + stringify(interpreter::Object{right})};
+                    },
+                    [](const auto &,
+                       const auto &) -> std::optional<interpreter::Object> {
+                      return std::nullopt;
+                    }},
           left, right);
       if (result.has_value())
         return result.value();
@@ -172,16 +176,16 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
                    "strings, or one number and one string.");
     }
     case TokenType::GREATER:
-      return interpretNumericalBinaryExpr<InterpreterBoolean>(
+      return interpretNumericalBinaryExpr<interpreter::Boolean>(
           left, right, std::greater<>(), expr.op);
     case TokenType::GREATER_EQUAL:
-      return interpretNumericalBinaryExpr<InterpreterBoolean>(
+      return interpretNumericalBinaryExpr<interpreter::Boolean>(
           left, right, std::greater_equal<>(), expr.op);
     case TokenType::LESS:
-      return interpretNumericalBinaryExpr<InterpreterBoolean>(
+      return interpretNumericalBinaryExpr<interpreter::Boolean>(
           left, right, std::less<>(), expr.op);
     case TokenType::LESS_EQUAL:
-      return interpretNumericalBinaryExpr<InterpreterBoolean>(
+      return interpretNumericalBinaryExpr<interpreter::Boolean>(
           left, right, std::less_equal<>(), expr.op);
 
     case TokenType::BANG_EQUAL:
@@ -200,17 +204,17 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     }
   }
 
-  auto visitVarExpr(VarExpr &expr) -> InterpreterObject override {
+  auto visitVarExpr(VarExpr &expr) -> interpreter::Object override {
     return env.get(expr.name.lexeme);
   }
 
-  auto visitAssignExpr(AssignExpr &expr) -> InterpreterObject override {
+  auto visitAssignExpr(AssignExpr &expr) -> interpreter::Object override {
     auto value = evaluate(*expr.value);
     env.assign(expr.name.lexeme, value);
     return value;
   }
 
-  auto visitLogicalExpr(LogicalExpr &expr) -> InterpreterObject override {
+  auto visitLogicalExpr(LogicalExpr &expr) -> interpreter::Object override {
     auto left_obj = evaluate(*expr.left);
     switch (expr.op.type) {
     case TokenType::OR:
@@ -227,14 +231,14 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     return evaluate(*expr.right);
   }
 
-  auto visitCallExpr(CallExpr &expr) -> InterpreterObject override {
+  auto visitCallExpr(CallExpr &expr) -> interpreter::Object override {
     auto callee = evaluate(*expr.callee);
     auto args = expr.args |
                 std::ranges::views::transform(
                     [this](const auto &v) { return evaluate(*v); }) |
-                std::ranges::to<std::vector<InterpreterObject>>();
+                std::ranges::to<std::vector<interpreter::Object>>();
 
-    if (const auto *object = std::get_if<InterpreterCallable>(&callee)) {
+    if (const auto *object = std::get_if<interpreter::Callable>(&callee)) {
       // check arity
       {
         const auto arity = object->get()->arity();
@@ -263,7 +267,7 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
   void visitVarStmt(VarStmt &stmt) override {
     const auto name = stmt.name.lexeme;
     const auto value = stmt.expression != nullptr ? evaluate(*stmt.expression)
-                                                  : InterpreterNil{};
+                                                  : interpreter::Nil{};
 
     env.define(name, value);
   }
@@ -272,7 +276,7 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     auto previous = std::move(env);
     const auto _ = Defer([this, &previous]() { env = std::move(previous); });
 
-    auto currentEnv = Environment(&previous);
+    auto currentEnv = interpreter::Environment(&previous);
     env = std::move(currentEnv);
     for (auto &stmt_ : stmt.stmts) {
       execute(*stmt_);
@@ -301,50 +305,50 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
   }
 
 private:
-  Environment env;
+  interpreter::Environment env;
 
   void execute(Stmt &stmt) {
     stmt.accept(*this);
   }
-  auto evaluate(Expr &expr) -> InterpreterObject {
+  auto evaluate(Expr &expr) -> interpreter::Object {
     return expr.accept(*this);
   }
 
-  auto isTruthy(const InterpreterObject &object) -> InterpreterBoolean {
-    return InterpreterBoolean(object.visit(
-        overloads{[](const InterpreterBoolean v) { return v.value; },
-                  [](const InterpreterString &) { return true; },
-                  [](const InterpreterNumber) { return true; },
-                  [](const InterpreterNil) { return false; },
-                  [](const InterpreterCallable &) { return true; }}));
+  auto isTruthy(const interpreter::Object &object) -> interpreter::Boolean {
+    return interpreter::Boolean(object.visit(
+        overloads{[](const interpreter::Boolean v) { return v.value; },
+                  [](const interpreter::String &) { return true; },
+                  [](const interpreter::Number) { return true; },
+                  [](const interpreter::Nil) { return false; },
+                  [](const interpreter::Callable &) { return true; }}));
   }
 
-  auto isEqual(const InterpreterObject &left, const InterpreterObject &right)
-      -> InterpreterBoolean {
+  auto isEqual(const interpreter::Object &left,
+               const interpreter::Object &right) -> interpreter::Boolean {
 
-    if (std::holds_alternative<InterpreterNil>(left) &&
-        std::holds_alternative<InterpreterNil>(right))
-      return InterpreterBoolean{true};
+    if (std::holds_alternative<interpreter::Nil>(left) &&
+        std::holds_alternative<interpreter::Nil>(right))
+      return interpreter::Boolean{true};
 
-    if (std::holds_alternative<InterpreterNil>(left) ||
-        std::holds_alternative<InterpreterNil>(right))
-      return InterpreterBoolean{false};
+    if (std::holds_alternative<interpreter::Nil>(left) ||
+        std::holds_alternative<interpreter::Nil>(right))
+      return interpreter::Boolean{false};
 
-    INTERPRET_RETURN(left, right, std::equal_to, InterpreterNumber,
-                     InterpreterBoolean)
-    INTERPRET_RETURN(left, right, std::equal_to, InterpreterBoolean,
-                     InterpreterBoolean)
-    INTERPRET_RETURN(left, right, std::equal_to, InterpreterString,
-                     InterpreterBoolean)
-    INTERPRET_RETURN(left, right, std::equal_to, InterpreterBoolean)
+    INTERPRET_RETURN(left, right, std::equal_to, interpreter::Number,
+                     interpreter::Boolean)
+    INTERPRET_RETURN(left, right, std::equal_to, interpreter::Boolean,
+                     interpreter::Boolean)
+    INTERPRET_RETURN(left, right, std::equal_to, interpreter::String,
+                     interpreter::Boolean)
+    INTERPRET_RETURN(left, right, std::equal_to, interpreter::Boolean)
 
-    return InterpreterBoolean{false};
+    return interpreter::Boolean{false};
   }
 
   template <typename T, typename R = T, typename F>
     requires InterpretBinaryOperation<F, T, R>
-  auto tryInterpretBinary(const InterpreterObject &left,
-                          const InterpreterObject &right, F &&f)
+  auto tryInterpretBinary(const interpreter::Object &left,
+                          const interpreter::Object &right, F &&f)
       -> std::optional<R> {
     const auto *left_value = std::get_if<T>(&left);
     const auto *right_value = std::get_if<T>(&right);
@@ -355,12 +359,12 @@ private:
     return R{std::invoke(f, left_value->value, right_value->value)};
   }
 
-  template <typename R = InterpreterNumber, typename F>
-    requires InterpretBinaryOperation<F, InterpreterNumber, R>
-  auto interpretNumericalBinaryExpr(const InterpreterObject &left,
-                                    const InterpreterObject &right, F &&f,
+  template <typename R = interpreter::Number, typename F>
+    requires InterpretBinaryOperation<F, interpreter::Number, R>
+  auto interpretNumericalBinaryExpr(const interpreter::Object &left,
+                                    const interpreter::Object &right, F &&f,
                                     const Token &token) -> R {
-    const auto result = tryInterpretBinary<InterpreterNumber, R>(
+    const auto result = tryInterpretBinary<interpreter::Number, R>(
         left, right, std::forward<decltype(f)>(f));
 
     if (!result.has_value())

@@ -22,11 +22,12 @@ export namespace lox {
 template <typename T>
 concept ValuedInterpreterObject = requires(const T &x) { x.value; };
 
-struct InterpreterNil {};
-struct InterpreterString {
+namespace interpreter {
+struct Nil {};
+struct String {
   std::string value;
 };
-struct InterpreterNumber {
+struct Number {
   double value;
 
 public:
@@ -35,7 +36,7 @@ public:
     return *this;
   }
 };
-struct InterpreterBoolean {
+struct Boolean {
   bool value;
 
 public:
@@ -44,40 +45,35 @@ public:
     return *this;
   }
 };
+struct CallableI;
+using Callable = std::shared_ptr<CallableI>;
 
-struct InterpreterCallableI;
-using InterpreterCallable = std::shared_ptr<InterpreterCallableI>;
-
-using InterpreterObject =
-    std::variant<InterpreterNil, InterpreterString, InterpreterNumber,
-                 InterpreterBoolean, InterpreterCallable>;
-
-struct InterpreterCallableI {
+using Object =
+    std::variant<interpreter::Nil, interpreter::String, interpreter::Number,
+                 interpreter::Boolean, interpreter::Callable>;
+struct CallableI {
   virtual auto arity() -> std::size_t = 0;
-  virtual auto call(std::vector<InterpreterObject> args)
-      -> InterpreterObject = 0;
+  virtual auto call(std::vector<Object> args) -> Object = 0;
 };
-
-constexpr auto interpreterTypeName(const InterpreterObject &object)
-    -> std::string_view {
+constexpr auto interpreterTypeName(const Object &object) -> std::string_view {
   using namespace std::string_view_literals;
-  return object.visit(lox::detail::overloads{
-      [](const InterpreterString &) { return "string"sv; },
-      [](const InterpreterNil) { return "nil"sv; },
-      [](const InterpreterBoolean) { return "boolean"sv; },
-      [](const InterpreterNumber &) { return "number"sv; },
-      [](const InterpreterCallable &) { return "callable"sv; }});
+  return object.visit(
+      lox::detail::overloads{[](const String &) { return "string"sv; },
+                             [](const Nil) { return "nil"sv; },
+                             [](const Boolean) { return "boolean"sv; },
+                             [](const Number &) { return "number"sv; },
+                             [](const Callable &) { return "callable"sv; }});
 }
 
-auto stringify(InterpreterObject obj) -> std::string {
+auto stringify(Object obj) -> std::string {
   return obj.visit(lox::detail::overloads{
-      [](InterpreterString value) { return std::move(value.value); },
-      [](const InterpreterNil) { return std::string{"nil"}; },
-      [](const InterpreterBoolean value) {
+      [](String value) { return std::move(value.value); },
+      [](const Nil) { return std::string{"nil"}; },
+      [](const Boolean value) {
         return std::string{value.value ? "true" : "false"};
       },
-      [](const InterpreterNumber value) { return std::to_string(value.value); },
-      [](const InterpreterCallable &) { return std::string("callable"); }});
+      [](const Number value) { return std::to_string(value.value); },
+      [](const Callable &) { return std::string("callable"); }});
 }
-
+} // namespace interpreter
 } // namespace lox

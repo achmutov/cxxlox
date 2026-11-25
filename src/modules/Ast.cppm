@@ -42,7 +42,7 @@ STMTS(CONSTRUCT_DECL)
 
 #define VISITOR_EXPR_TYPES(PREDICATE, ...)                                     \
   PREDICATE(std::string, __VA_ARGS__)                                          \
-  PREDICATE(InterpreterObject, __VA_ARGS__)
+  PREDICATE(interpreter::Object, __VA_ARGS__)
 #define VISITOR_STMT_TYPES(STMT, ...) STMT(void, __VA_ARGS__)
 
 #define VISITOR_ABS(EXPR, T)    virtual auto visit##EXPR(EXPR &) -> T = 0;
