@@ -48,8 +48,7 @@ public:
 struct CallableI;
 using Callable = std::shared_ptr<CallableI>;
 
-using Object = std::variant<runtime::Nil, runtime::String, runtime::Number,
-                            runtime::Boolean, runtime::Callable>;
+using Object = std::variant<Nil, String, Number, Boolean, Callable>;
 struct CallableI {
   virtual auto arity() -> std::size_t = 0;
   virtual auto call(std::vector<Object> args) -> Object = 0;

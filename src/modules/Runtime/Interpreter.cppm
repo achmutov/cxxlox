@@ -52,7 +52,7 @@ struct IsVariantAlternative<T, std::variant<Alternatives...>>
     : std::bool_constant<(std::same_as<T, Alternatives> || ...)> {};
 
 template <typename T>
-concept InterpreterValue = IsVariantAlternative<T, runtime::Object>::value &&
+concept InterpreterValue = IsVariantAlternative<T, Object>::value &&
                            requires(const T &object) { object.value; };
 
 template <typename F, typename T, typename R>
@@ -69,7 +69,7 @@ concept BinaryOperation = requires(F &f, Input a, Output b) {
   { std::invoke(f, a, b) } -> std::same_as<Output>;
 };
 
-export struct Interpreter : public Expr::Visitor<runtime::Object>,
+export struct Interpreter : public Expr::Visitor<Object>,
                             public Stmt::Visitor<void> {
   constexpr static auto binary_numeric_error = "Operands must be numbers";
 
@@ -78,38 +78,36 @@ export struct Interpreter : public Expr::Visitor<runtime::Object>,
       for (auto &stmt : stmts) {
         execute(*stmt);
       }
-    } catch (runtime::RuntimeException &ex) {
+    } catch (RuntimeException &ex) {
       std::cout << ex.what2() << "\n";
       hadRuntimeError = true;
     }
   }
 
-  auto visitTernaryExpr(TernaryExpr &expr) -> runtime::Object override {
+  auto visitTernaryExpr(TernaryExpr &expr) -> Object override {
     return isTruthy(evaluate(*expr.cond)).value ? evaluate(*expr.left)
                                                 : evaluate(*expr.right);
   }
 
-  auto visitLiteralExpr(LiteralExpr &expr) -> runtime::Object override {
+  auto visitLiteralExpr(LiteralExpr &expr) -> Object override {
     return expr.literal.visit(overloads{
-        [](std::string value) -> runtime::Object {
-          return runtime::String{std::move(value)};
-        },
-        [](double value) -> runtime::Object { return runtime::Number{value}; },
-        [](bool value) -> runtime::Object { return runtime::Boolean{value}; },
-        [](std::monostate) -> runtime::Object { return runtime::Nil{}; }});
+        [](std::string value) -> Object { return String{std::move(value)}; },
+        [](double value) -> Object { return Number{value}; },
+        [](bool value) -> Object { return Boolean{value}; },
+        [](std::monostate) -> Object { return Nil{}; }});
   } // namespace lox
 
-  auto visitGroupingExpr(GroupingExpr &expr) -> runtime::Object override {
+  auto visitGroupingExpr(GroupingExpr &expr) -> Object override {
     return evaluate(*expr.expression);
   }
 
-  auto visitUnaryExpr(UnaryExpr &expr) -> runtime::Object override {
+  auto visitUnaryExpr(UnaryExpr &expr) -> Object override {
     auto right = evaluate(*expr.right);
     switch (expr.op.type) {
     case TokenType::MINUS:
-      if (auto p = std::get_if<runtime::Number>(&right))
+      if (auto p = std::get_if<Number>(&right))
         return -*p;
-      throw runtime::TypeException(expr.op, "Operand must be a number");
+      throw TypeException(expr.op, "Operand must be a number");
     case TokenType::BANG:
       return !isTruthy(right);
     default:
@@ -118,22 +116,22 @@ export struct Interpreter : public Expr::Visitor<runtime::Object>,
     }
   }
 
-  auto visitBinaryExpr(BinaryExpr &expr) -> runtime::Object override {
+  auto visitBinaryExpr(BinaryExpr &expr) -> Object override {
     auto left = evaluate(*expr.left);
     auto right = evaluate(*expr.right);
     switch (expr.op.type) {
     case TokenType::SLASH: {
-      const auto *left_value = std::get_if<runtime::Number>(&left);
-      const auto *right_value = std::get_if<runtime::Number>(&right);
+      const auto *left_value = std::get_if<Number>(&left);
+      const auto *right_value = std::get_if<Number>(&right);
 
       if (!left_value || !right_value)
-        throw runtime::TypeException(expr.op, binary_numeric_error);
+        throw TypeException(expr.op, binary_numeric_error);
 
       // check division
       if (std::abs(right_value->value) < std::numeric_limits<double>::epsilon())
-        throw runtime::ZeroDivisionException{};
+        throw ZeroDivisionException{};
 
-      return runtime::Number{left_value->value / right_value->value};
+      return Number{left_value->value / right_value->value};
     }
     case TokenType::STAR:
       return interpretNumericalBinaryExpr(left, right, std::multiplies<>(),
@@ -141,44 +139,38 @@ export struct Interpreter : public Expr::Visitor<runtime::Object>,
     case TokenType::MINUS:
       return interpretNumericalBinaryExpr(left, right, std::minus<>(), expr.op);
     case TokenType::PLUS: {
-      INTERPRET_RETURN(left, right, std::plus, runtime::Number)
-      INTERPRET_RETURN(left, right, std::plus, runtime::String)
+      INTERPRET_RETURN(left, right, std::plus, Number)
+      INTERPRET_RETURN(left, right, std::plus, String)
 
       // EVIL
       const auto result = std::visit(
-          overloads{
-              [](runtime::Number left,
-                 runtime::String &right) -> std::optional<runtime::Object> {
-                return runtime::String{stringify(runtime::Object{left}) +
-                                       right.value};
-              },
-              [](runtime::String &left,
-                 runtime::Number right) -> std::optional<runtime::Object> {
-                return runtime::String{left.value +
-                                       stringify(runtime::Object{right})};
-              },
-              [](const auto &, const auto &) -> std::optional<runtime::Object> {
-                return std::nullopt;
-              }},
+          overloads{[](Number left, String &right) -> std::optional<Object> {
+                      return String{stringify(Object{left}) + right.value};
+                    },
+                    [](String &left, Number right) -> std::optional<Object> {
+                      return String{left.value + stringify(Object{right})};
+                    },
+                    [](const auto &, const auto &) -> std::optional<Object> {
+                      return std::nullopt;
+                    }},
           left, right);
       if (result.has_value())
         return result.value();
 
-      throw runtime::TypeException(expr.op,
-                                   "Operands must be two numbers or two "
+      throw TypeException(expr.op, "Operands must be two numbers or two "
                                    "strings, or one number and one string.");
     }
     case TokenType::GREATER:
-      return interpretNumericalBinaryExpr<runtime::Boolean>(
-          left, right, std::greater<>(), expr.op);
+      return interpretNumericalBinaryExpr<Boolean>(left, right,
+                                                   std::greater<>(), expr.op);
     case TokenType::GREATER_EQUAL:
-      return interpretNumericalBinaryExpr<runtime::Boolean>(
+      return interpretNumericalBinaryExpr<Boolean>(
           left, right, std::greater_equal<>(), expr.op);
     case TokenType::LESS:
-      return interpretNumericalBinaryExpr<runtime::Boolean>(
-          left, right, std::less<>(), expr.op);
+      return interpretNumericalBinaryExpr<Boolean>(left, right, std::less<>(),
+                                                   expr.op);
     case TokenType::LESS_EQUAL:
-      return interpretNumericalBinaryExpr<runtime::Boolean>(
+      return interpretNumericalBinaryExpr<Boolean>(
           left, right, std::less_equal<>(), expr.op);
 
     case TokenType::BANG_EQUAL:
@@ -197,17 +189,17 @@ export struct Interpreter : public Expr::Visitor<runtime::Object>,
     }
   }
 
-  auto visitVarExpr(VarExpr &expr) -> runtime::Object override {
+  auto visitVarExpr(VarExpr &expr) -> Object override {
     return env.get(expr.name.lexeme);
   }
 
-  auto visitAssignExpr(AssignExpr &expr) -> runtime::Object override {
+  auto visitAssignExpr(AssignExpr &expr) -> Object override {
     auto value = evaluate(*expr.value);
     env.assign(expr.name.lexeme, value);
     return value;
   }
 
-  auto visitLogicalExpr(LogicalExpr &expr) -> runtime::Object override {
+  auto visitLogicalExpr(LogicalExpr &expr) -> Object override {
     auto left_obj = evaluate(*expr.left);
     switch (expr.op.type) {
     case TokenType::OR:
@@ -224,28 +216,28 @@ export struct Interpreter : public Expr::Visitor<runtime::Object>,
     return evaluate(*expr.right);
   }
 
-  auto visitCallExpr(CallExpr &expr) -> runtime::Object override {
+  auto visitCallExpr(CallExpr &expr) -> Object override {
     auto callee = evaluate(*expr.callee);
     auto args = expr.args |
                 std::ranges::views::transform(
                     [this](const auto &v) { return evaluate(*v); }) |
-                std::ranges::to<std::vector<runtime::Object>>();
+                std::ranges::to<std::vector<Object>>();
 
-    if (const auto *object = std::get_if<runtime::Callable>(&callee)) {
+    if (const auto *object = std::get_if<Callable>(&callee)) {
       // check arity
       {
         const auto arity = object->get()->arity();
         if (args.size() != arity)
-          throw runtime::TypeException(
-              expr.rightParen, std::format("Expected {} arguments but got {}",
-                                           arity, args.size()));
+          throw TypeException(expr.rightParen,
+                              std::format("Expected {} arguments but got {}",
+                                          arity, args.size()));
       }
 
       return object->get()->call(std::move(args));
     }
 
-    throw runtime::TypeException(expr.rightParen,
-                                 "Can only call functions and classes.");
+    throw TypeException(expr.rightParen,
+                        "Can only call functions and classes.");
   }
 
   void visitExpressionStmt(ExpressionStmt &stmt) override {
@@ -259,8 +251,8 @@ export struct Interpreter : public Expr::Visitor<runtime::Object>,
   }
   void visitVarStmt(VarStmt &stmt) override {
     const auto name = stmt.name.lexeme;
-    const auto value = stmt.expression != nullptr ? evaluate(*stmt.expression)
-                                                  : runtime::Nil{};
+    const auto value =
+        stmt.expression != nullptr ? evaluate(*stmt.expression) : Nil{};
 
     env.define(name, value);
   }
@@ -269,7 +261,7 @@ export struct Interpreter : public Expr::Visitor<runtime::Object>,
     auto previous = std::move(env);
     const auto _ = Defer([this, &previous]() { env = std::move(previous); });
 
-    auto currentEnv = runtime::Environment(&previous);
+    auto currentEnv = Environment(&previous);
     env = std::move(currentEnv);
     for (auto &stmt_ : stmt.stmts) {
       execute(*stmt_);
@@ -287,61 +279,53 @@ export struct Interpreter : public Expr::Visitor<runtime::Object>,
     while (isTruthy(evaluate(*stmt.condition)).value)
       try {
         execute(*stmt.body);
-      } catch (runtime::BreakException &) {
+      } catch (BreakException &) {
         break;
       }
   }
 
   void visitBreakStmt(BreakStmt &stmt) override {
     (void)stmt;
-    throw runtime::BreakException();
+    throw BreakException();
   }
 
 private:
-  runtime::Environment env;
+  Environment env;
 
   void execute(Stmt &stmt) {
     stmt.accept(*this);
   }
-  auto evaluate(Expr &expr) -> runtime::Object {
+  auto evaluate(Expr &expr) -> Object {
     return expr.accept(*this);
   }
 
-  auto isTruthy(const runtime::Object &object) -> runtime::Boolean {
-    return runtime::Boolean(object.visit(
-        overloads{[](const runtime::Boolean v) { return v.value; },
-                  [](const runtime::String &) { return true; },
-                  [](const runtime::Number) { return true; },
-                  [](const runtime::Nil) { return false; },
-                  [](const runtime::Callable &) { return true; }}));
+  auto isTruthy(const Object &object) -> Boolean {
+    return Boolean(object.visit(overloads{
+        [](const Boolean v) { return v.value; },
+        [](const String &) { return true; }, [](const Number) { return true; },
+        [](const Nil) { return false; },
+        [](const Callable &) { return true; }}));
   }
 
-  auto isEqual(const runtime::Object &left, const runtime::Object &right)
-      -> runtime::Boolean {
+  auto isEqual(const Object &left, const Object &right) -> Boolean {
 
-    if (std::holds_alternative<runtime::Nil>(left) &&
-        std::holds_alternative<runtime::Nil>(right))
-      return runtime::Boolean{true};
+    if (std::holds_alternative<Nil>(left) && std::holds_alternative<Nil>(right))
+      return Boolean{true};
 
-    if (std::holds_alternative<runtime::Nil>(left) ||
-        std::holds_alternative<runtime::Nil>(right))
-      return runtime::Boolean{false};
+    if (std::holds_alternative<Nil>(left) || std::holds_alternative<Nil>(right))
+      return Boolean{false};
 
-    INTERPRET_RETURN(left, right, std::equal_to, runtime::Number,
-                     runtime::Boolean)
-    INTERPRET_RETURN(left, right, std::equal_to, runtime::Boolean,
-                     runtime::Boolean)
-    INTERPRET_RETURN(left, right, std::equal_to, runtime::String,
-                     runtime::Boolean)
-    INTERPRET_RETURN(left, right, std::equal_to, runtime::Boolean)
+    INTERPRET_RETURN(left, right, std::equal_to, Number, Boolean)
+    INTERPRET_RETURN(left, right, std::equal_to, Boolean, Boolean)
+    INTERPRET_RETURN(left, right, std::equal_to, String, Boolean)
+    INTERPRET_RETURN(left, right, std::equal_to, Boolean)
 
-    return runtime::Boolean{false};
+    return Boolean{false};
   }
 
   template <typename T, typename R = T, typename F>
     requires InterpretBinaryOperation<F, T, R>
-  auto tryInterpretBinary(const runtime::Object &left,
-                          const runtime::Object &right, F &&f)
+  auto tryInterpretBinary(const Object &left, const Object &right, F &&f)
       -> std::optional<R> {
     const auto *left_value = std::get_if<T>(&left);
     const auto *right_value = std::get_if<T>(&right);
@@ -352,16 +336,15 @@ private:
     return R{std::invoke(f, left_value->value, right_value->value)};
   }
 
-  template <typename R = runtime::Number, typename F>
-    requires InterpretBinaryOperation<F, runtime::Number, R>
-  auto interpretNumericalBinaryExpr(const runtime::Object &left,
-                                    const runtime::Object &right, F &&f,
-                                    const Token &token) -> R {
-    const auto result = tryInterpretBinary<runtime::Number, R>(
+  template <typename R = Number, typename F>
+    requires InterpretBinaryOperation<F, Number, R>
+  auto interpretNumericalBinaryExpr(const Object &left, const Object &right,
+                                    F &&f, const Token &token) -> R {
+    const auto result = tryInterpretBinary<Number, R>(
         left, right, std::forward<decltype(f)>(f));
 
     if (!result.has_value())
-      throw runtime::TypeException(token, binary_numeric_error);
+      throw TypeException(token, binary_numeric_error);
 
     return result.value();
   }
