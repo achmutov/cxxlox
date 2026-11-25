@@ -30,6 +30,7 @@ target_sources(
                 src/modules/Runtime/Callable.cppm
                 src/modules/Runtime/Primitive.cppm
                 src/modules/Runtime/Runtime.cppm
+                src/modules/Runtime/Builtins.cppm
 )
 target_compile_options(
     lox

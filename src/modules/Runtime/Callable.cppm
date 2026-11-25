@@ -14,6 +14,7 @@ struct CallableI {
   virtual auto arity() -> std::size_t = 0;
   virtual auto call(Interpreter &interpreter, std::vector<Object> args)
       -> Object = 0;
+  virtual ~CallableI() = default;
 };
 
 } // namespace lox::runtime

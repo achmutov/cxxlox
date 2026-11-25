@@ -66,6 +66,8 @@ export struct Interpreter : public ExprVisitor<Object>,
                             public StmtVisitor<void> {
   constexpr static auto binary_numeric_error = "Operands must be numbers";
 
+  Interpreter();
+
   void interpret(const std::span<StmtPtr> stmts) {
     try {
       for (auto &stmt : stmts) {
@@ -183,12 +185,12 @@ export struct Interpreter : public ExprVisitor<Object>,
   }
 
   auto visit(VarExpr &expr) -> Object override {
-    return env.get(expr.name.lexeme);
+    return env->get(expr.name.lexeme);
   }
 
   auto visit(AssignExpr &expr) -> Object override {
     auto value = evaluate(*expr.value);
-    env.assign(expr.name.lexeme, value);
+    env->assign(expr.name.lexeme, value);
     return value;
   }
 
@@ -247,15 +249,15 @@ export struct Interpreter : public ExprVisitor<Object>,
     const auto value =
         stmt.expression != nullptr ? evaluate(*stmt.expression) : Nil{};
 
-    env.define(name, value);
+    env->define(name, value);
   }
 
   void visit(BlockStmt &stmt) override {
-    auto previous = std::move(env);
-    const auto _ = Defer([this, &previous]() { env = std::move(previous); });
+    auto previous = env;
+    const auto _ = Defer([this, &previous]() { env = previous; });
 
-    auto currentEnv = Environment(&previous);
-    env = std::move(currentEnv);
+    auto currentEnv = Environment(previous);
+    env = &currentEnv;
     for (auto &stmt_ : stmt.stmts) {
       execute(*stmt_);
     }
@@ -283,7 +285,8 @@ export struct Interpreter : public ExprVisitor<Object>,
   }
 
 private:
-  Environment env;
+  Environment globals;
+  Environment *env;
 
   void execute(Stmt &stmt) {
     stmt.node.visit([this](auto &value) { visit(value); });
