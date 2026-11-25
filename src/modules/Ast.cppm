@@ -13,16 +13,16 @@ import Interpreter.Object;
 export namespace lox {
 
 // Utility macros
-#define EXPRS(PREDICATE, ...)                                                  \
-  PREDICATE(TernaryExpr, __VA_ARGS__)                                          \
-  PREDICATE(BinaryExpr, __VA_ARGS__)                                           \
-  PREDICATE(UnaryExpr, __VA_ARGS__)                                            \
-  PREDICATE(GroupingExpr, __VA_ARGS__)                                         \
-  PREDICATE(LiteralExpr, __VA_ARGS__)                                          \
-  PREDICATE(VarExpr, __VA_ARGS__)                                              \
-  PREDICATE(AssignExpr, __VA_ARGS__)                                           \
-  PREDICATE(LogicalExpr, __VA_ARGS__)                                          \
-  PREDICATE(CallExpr, __VA_ARGS__)
+#define EXPRS(EXPR, ...)                                                       \
+  EXPR(TernaryExpr, __VA_ARGS__)                                               \
+  EXPR(BinaryExpr, __VA_ARGS__)                                                \
+  EXPR(UnaryExpr, __VA_ARGS__)                                                 \
+  EXPR(GroupingExpr, __VA_ARGS__)                                              \
+  EXPR(LiteralExpr, __VA_ARGS__)                                               \
+  EXPR(VarExpr, __VA_ARGS__)                                                   \
+  EXPR(AssignExpr, __VA_ARGS__)                                                \
+  EXPR(LogicalExpr, __VA_ARGS__)                                               \
+  EXPR(CallExpr, __VA_ARGS__)
 
 #define STMTS(STMT, ...)                                                       \
   STMT(ExpressionStmt, __VA_ARGS__)                                            \
