@@ -11,7 +11,7 @@ import lox.runtime.object;
 import lox.runtime.errors;
 import lox.utils;
 
-namespace lox::interpreter {
+namespace lox::runtime {
 
 export class Environment {
 public:
@@ -50,4 +50,4 @@ private:
   }
 };
 
-} // namespace lox::interpreter
+} // namespace lox::runtime

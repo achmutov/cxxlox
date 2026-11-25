@@ -22,7 +22,7 @@ export namespace lox {
 template <typename T>
 concept ValuedInterpreterObject = requires(const T &x) { x.value; };
 
-namespace interpreter {
+namespace runtime {
 struct Nil {};
 struct String {
   std::string value;
@@ -48,9 +48,8 @@ public:
 struct CallableI;
 using Callable = std::shared_ptr<CallableI>;
 
-using Object =
-    std::variant<interpreter::Nil, interpreter::String, interpreter::Number,
-                 interpreter::Boolean, interpreter::Callable>;
+using Object = std::variant<runtime::Nil, runtime::String, runtime::Number,
+                            runtime::Boolean, runtime::Callable>;
 struct CallableI {
   virtual auto arity() -> std::size_t = 0;
   virtual auto call(std::vector<Object> args) -> Object = 0;
@@ -75,5 +74,5 @@ auto stringify(Object obj) -> std::string {
       [](const Number value) { return std::to_string(value.value); },
       [](const Callable &) { return std::string("callable"); }});
 }
-} // namespace interpreter
+} // namespace runtime
 } // namespace lox

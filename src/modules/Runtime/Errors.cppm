@@ -9,7 +9,7 @@ module;
 export module lox.runtime.errors;
 import lox.token;
 
-export namespace lox::interpreter {
+export namespace lox::runtime {
 class RuntimeException : public std::runtime_error {
 public:
   explicit RuntimeException(std::string &&msg) : std::runtime_error{msg} {}
@@ -40,20 +40,19 @@ public:
 
 class ZeroDivisionException : public RuntimeException {
 public:
-  ZeroDivisionException() : interpreter::RuntimeException{"division by zero"} {}
+  ZeroDivisionException() : RuntimeException{"division by zero"} {}
 
   constexpr auto name() -> std::string_view override {
     return "ZeroDivisionError";
   }
 };
 
-class BreakException : public interpreter::RuntimeException {
+class BreakException : public RuntimeException {
 public:
-  BreakException()
-      : interpreter::RuntimeException{"unenclosed 'break' keyword"} {}
+  BreakException() : RuntimeException{"unenclosed 'break' keyword"} {}
   constexpr auto name() -> std::string_view override {
     return "BreakException";
   }
 };
 
-} // namespace lox::interpreter
+} // namespace lox::runtime

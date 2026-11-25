@@ -16,7 +16,7 @@ import lox.parser;
 import lox.utils;
 import lox.runtime.interpreter;
 
-static void run(std::string_view script, lox::Interpreter &interpreter,
+static void run(std::string_view script, lox::runtime::Interpreter &interpreter,
                 bool isRepl) {
   const std::vector<lox::Token> tokens = lox::Scanner(script).scanTokens();
   for (auto &token : tokens)
@@ -39,7 +39,7 @@ static void runFile(std::string_view path) {
   }
   std::ostringstream ss;
   ss << f.rdbuf();
-  lox::Interpreter interpreter;
+  lox::runtime::Interpreter interpreter;
   run(ss.str(), interpreter, false);
 
   if (lox::hadError)
@@ -50,7 +50,7 @@ static void runFile(std::string_view path) {
 }
 
 static void runPrompt() {
-  lox::Interpreter interpreter;
+  lox::runtime::Interpreter interpreter;
   while (true) {
     std::print("> ");
     std::string line;
