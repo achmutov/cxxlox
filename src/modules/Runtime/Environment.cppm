@@ -6,8 +6,8 @@ module;
 #include <unordered_map>
 #include <utility>
 
-export module lox.runtime.environment;
-import lox.runtime.object;
+export module lox.runtime:environment;
+import :object;
 import lox.runtime.errors;
 import lox.utils;
 

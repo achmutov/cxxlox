@@ -1,14 +1,15 @@
 module;
 
-#include <cstddef>
+#include <concepts>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <variant>
-#include <vector>
 
-export module lox.runtime.object;
+export module lox.runtime:object;
+export import lox.runtime.primitive;
 import lox.utils;
 
 export namespace lox {
@@ -17,47 +18,32 @@ template <typename T>
 concept ValuedInterpreterObject = requires(const T &x) { x.value; };
 
 namespace runtime {
-struct Nil {};
-struct String {
-  std::string value;
-};
-struct Number {
-  double value;
 
-public:
-  auto operator-() {
-    value = -value;
-    return *this;
-  }
-};
-struct Boolean {
-  bool value;
-
-public:
-  auto operator!() {
-    value = !value;
-    return *this;
-  }
-};
 struct CallableI;
 using Callable = std::shared_ptr<CallableI>;
 
-using Object = std::variant<Nil, String, Number, Boolean, Callable>;
-struct CallableI {
-  virtual auto arity() -> std::size_t = 0;
-  virtual auto call(std::vector<Object> args) -> Object = 0;
+struct Object {
+  using Variant = std::variant<Nil, String, Number, Boolean, Callable>;
+  Variant variant;
+
+  template <typename T>
+    requires(!std::same_as<std::remove_cvref_t<T>, Object> &&
+             std::constructible_from<Variant, T &&>)
+  Object(T &&value) : variant{std::forward<T>(value)} {} // NOLINT
 };
+
 constexpr auto interpreterTypeName(const Object &object) -> std::string_view {
   using namespace std::string_view_literals;
-  return object.visit(overloads{[](const String &) { return "string"sv; },
-                                [](const Nil) { return "nil"sv; },
-                                [](const Boolean) { return "boolean"sv; },
-                                [](const Number &) { return "number"sv; },
-                                [](const Callable &) { return "callable"sv; }});
+  return object.variant.visit(
+      overloads{[](const String &) { return "string"sv; },
+                [](const Nil) { return "nil"sv; },
+                [](const Boolean) { return "boolean"sv; },
+                [](const Number &) { return "number"sv; },
+                [](const Callable &) { return "callable"sv; }});
 }
 
 auto stringify(Object obj) -> std::string {
-  return obj.visit(
+  return obj.variant.visit(
       overloads{[](String value) { return std::move(value.value); },
                 [](const Nil) { return std::string{"nil"}; },
                 [](const Boolean value) {

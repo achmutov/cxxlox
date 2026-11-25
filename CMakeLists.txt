@@ -19,7 +19,7 @@ target_sources(
                 src/modules/Scanner.cppm
                 src/modules/Token.cppm
                 src/modules/Ast.cppm
-                src/modules/AstPrinter.cppm
+                # src/modules/AstPrinter.cppm
                 src/modules/utils.cppm
                 src/modules/TokenType.cppm
                 src/modules/Parser.cppm
@@ -27,6 +27,9 @@ target_sources(
                 src/modules/Runtime/Object.cppm
                 src/modules/Runtime/Errors.cppm
                 src/modules/Runtime/Environment.cppm
+                src/modules/Runtime/Callable.cppm
+                src/modules/Runtime/Primitive.cppm
+                src/modules/Runtime/Runtime.cppm
 )
 target_compile_options(
     lox

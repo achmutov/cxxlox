@@ -18,14 +18,15 @@ module;
 #include <variant>
 #include <vector>
 
-export module lox.runtime.interpreter;
+export module lox.runtime:interpreter;
 import lox.ast;
 import lox.token;
 import lox.tokentype;
 import lox.utils;
-import lox.runtime.object;
 import lox.runtime.errors;
-import lox.runtime.environment;
+import :object;
+import :callable;
+import :environment;
 
 #define INTERPRET_RETURN(LEFT, RIGHT, OP, ...)                                 \
   {                                                                            \
@@ -44,7 +45,7 @@ struct IsVariantAlternative<T, std::variant<Alternatives...>>
     : std::bool_constant<(std::same_as<T, Alternatives> || ...)> {};
 
 template <typename T>
-concept InterpreterValue = IsVariantAlternative<T, Object>::value &&
+concept InterpreterValue = IsVariantAlternative<T, Object::Variant>::value &&
                            requires(const T &object) { object.value; };
 
 template <typename F, typename T, typename R>
@@ -97,7 +98,7 @@ export struct Interpreter : public ExprVisitor<Object>,
     auto right = evaluate(*expr.right);
     switch (expr.op.type) {
     case TokenType::MINUS:
-      if (auto p = std::get_if<Number>(&right))
+      if (auto p = std::get_if<Number>(&right.variant))
         return -*p;
       throw TypeException(expr.op, "Operand must be a number");
     case TokenType::BANG:
@@ -113,8 +114,8 @@ export struct Interpreter : public ExprVisitor<Object>,
     auto right = evaluate(*expr.right);
     switch (expr.op.type) {
     case TokenType::SLASH: {
-      const auto *left_value = std::get_if<Number>(&left);
-      const auto *right_value = std::get_if<Number>(&right);
+      const auto *left_value = std::get_if<Number>(&left.variant);
+      const auto *right_value = std::get_if<Number>(&right.variant);
 
       if (!left_value || !right_value)
         throw TypeException(expr.op, binary_numeric_error);
@@ -145,7 +146,7 @@ export struct Interpreter : public ExprVisitor<Object>,
                     [](const auto &, const auto &) -> std::optional<Object> {
                       return std::nullopt;
                     }},
-          left, right);
+          left.variant, right.variant);
       if (result.has_value())
         return result.value();
 
@@ -215,7 +216,7 @@ export struct Interpreter : public ExprVisitor<Object>,
                     [this](const auto &v) { return evaluate(*v); }) |
                 std::ranges::to<std::vector<Object>>();
 
-    if (const auto *object = std::get_if<Callable>(&callee)) {
+    if (const auto *object = std::get_if<Callable>(&callee.variant)) {
       // check arity
       {
         const auto arity = object->get()->arity();
@@ -225,7 +226,7 @@ export struct Interpreter : public ExprVisitor<Object>,
                                           arity, args.size()));
       }
 
-      return object->get()->call(std::move(args));
+      return object->get()->call(*this, std::move(args));
     }
 
     throw TypeException(expr.rightParen,
@@ -292,7 +293,7 @@ private:
   }
 
   auto isTruthy(const Object &object) -> Boolean {
-    return Boolean(object.visit(overloads{
+    return Boolean(object.variant.visit(overloads{
         [](const Boolean v) { return v.value; },
         [](const String &) { return true; }, [](const Number) { return true; },
         [](const Nil) { return false; },
@@ -301,10 +302,12 @@ private:
 
   auto isEqual(const Object &left, const Object &right) -> Boolean {
 
-    if (std::holds_alternative<Nil>(left) && std::holds_alternative<Nil>(right))
+    if (std::holds_alternative<Nil>(left.variant) &&
+        std::holds_alternative<Nil>(right.variant))
       return Boolean{true};
 
-    if (std::holds_alternative<Nil>(left) || std::holds_alternative<Nil>(right))
+    if (std::holds_alternative<Nil>(left.variant) ||
+        std::holds_alternative<Nil>(right.variant))
       return Boolean{false};
 
     INTERPRET_RETURN(left, right, std::equal_to, Number, Boolean)
@@ -319,8 +322,8 @@ private:
     requires InterpretBinaryOperation<F, T, R>
   auto tryInterpretBinary(const Object &left, const Object &right, F &&f)
       -> std::optional<R> {
-    const auto *left_value = std::get_if<T>(&left);
-    const auto *right_value = std::get_if<T>(&right);
+    const auto *left_value = std::get_if<T>(&left.variant);
+    const auto *right_value = std::get_if<T>(&right.variant);
 
     if (!left_value || !right_value)
       return std::nullopt;
