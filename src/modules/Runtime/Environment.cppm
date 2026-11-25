@@ -19,7 +19,7 @@ public:
   explicit Environment(Environment *enclosing) : enclosing{enclosing} {}
 
   void define(std::string name, Object value) {
-    values.insert({std::move(name), std::move(value)});
+    values.insert_or_assign(std::move(name), std::move(value));
   }
 
   void assign(std::string_view name, Object value) {

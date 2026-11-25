@@ -66,11 +66,11 @@ auto main(int argc, char *argv[]) -> int {
   // auto ast_printer = lox::AstPrinter();
   // auto b = lox::BinaryExpr(
   //     {lox::TokenType::PLUS, "+", std::nullopt, 0},
-  //     std::make_unique<lox::LiteralExpr>(std::string("123")),
-  //     std::make_unique<lox::GroupingExpr>(std::make_unique<lox::BinaryExpr>(
+  //     std::make_shared<lox::LiteralExpr>(std::string("123")),
+  //     std::make_shared<lox::GroupingExpr>(std::make_shared<lox::BinaryExpr>(
   //         lox::Token{lox::TokenType::PLUS, "+", std::nullopt, 0},
-  //         std::make_unique<lox::LiteralExpr>(true),
-  //         std::make_unique<lox::LiteralExpr>(123.456))));
+  //         std::make_shared<lox::LiteralExpr>(true),
+  //         std::make_shared<lox::LiteralExpr>(123.456))));
   // std::println("{}", b.accept(ast_printer));
 
   if (argc > 2) {

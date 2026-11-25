@@ -25,7 +25,11 @@ import lox.utils;
 // clang-format off
 
 // program        -> declaration* EOF ;
-// declaration    -> varDecl | statement ;
+// declaration    -> varDecl | funDecl | statement ;
+// varDecl        -> IDENTIFIER ( "=" expression ) ? ;
+// funDecl        -> "fun" function ;
+// function       -> IDENTIFIER "(" parameters? ")" block ;
+// parameters     -> identifier ( "," IDENTIFIER )* ","? ;
 // statement      -> printStmt | ifStmt | whileStmt | forStmt | expressionStmt | replExpressionStmt | block | break ;
 // block          -> "{" declaration* "}"
 // printStmt      -> "print" expression ";" ;
@@ -79,6 +83,8 @@ export class Parser {
   // traversal
   auto declaration() -> StmtPtr {
     try {
+      if (match({TokenType::FUN}))
+        return funDeclaration();
       if (match({TokenType::VAR}))
         return varDeclaration();
       return statement();
@@ -86,6 +92,32 @@ export class Parser {
       synchronize();
       return nullptr;
     }
+  }
+  auto funDeclaration() -> StmtPtr {
+    const auto identifier =
+        consumeOrError(TokenType::IDENTIFIER, "Expect function name.");
+
+    consumeOrError(TokenType::LEFT_PAREN, "Expect '(' after function name.");
+
+    auto params = std::vector<Token>{};
+    if (!check(TokenType::RIGHT_PAREN))
+      do {
+        if (params.size() >= 255)
+          throw error(peek(), "Can't have more than 255 parameters");
+        params.emplace_back(
+            consumeOrError(TokenType::IDENTIFIER, "Expect parameter name."));
+      } while (match({TokenType::COMMA}) && !check(TokenType::RIGHT_PAREN));
+
+    consumeOrError(TokenType::RIGHT_PAREN,
+                   "Expect ')' after function parameters.");
+
+    consumeOrError(TokenType::LEFT_BRACE, "Expect '{' before function body");
+
+    auto body = block();
+
+    return std::make_shared<Stmt>(FunctionStmt{.name = identifier,
+                                               .params = std::move(params),
+                                               .body = std::move(body)});
   }
   auto varDeclaration() -> StmtPtr {
     const Token name =
@@ -95,14 +127,14 @@ export class Parser {
       initializer = expression();
     consumeOrError(TokenType::SEMICOLON,
                    "Expect ';' after variable declaration.");
-    return std::make_unique<Stmt>(
+    return std::make_shared<Stmt>(
         VarStmt{.name = name, .expression = std::move(initializer)});
   }
   auto statement() -> StmtPtr {
     if (match({TokenType::PRINT}))
       return printStatement();
     if (match({TokenType::LEFT_BRACE}))
-      return block();
+      return std::make_shared<Stmt>(BlockStmt{.stmts = block()});
     if (match({TokenType::IF}))
       return ifStatement();
     if (match({TokenType::WHILE}))
@@ -116,24 +148,24 @@ export class Parser {
   auto printStatement() -> StmtPtr {
     auto expr = expression();
     consumeOrError(TokenType::SEMICOLON, "Expect ';' after value.");
-    return std::make_unique<Stmt>(PrintStmt{.expression = std::move(expr)});
+    return std::make_shared<Stmt>(PrintStmt{.expression = std::move(expr)});
   }
-  auto block() -> StmtPtr {
-    auto stmts = std::vector<StmtPtr>{};
+  auto block() -> std::vector<std::shared_ptr<Stmt>> {
+    auto stmts = std::vector<std::shared_ptr<Stmt>>{};
     while (!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
       stmts.push_back(declaration());
     }
     consumeOrError(TokenType::RIGHT_BRACE,
                    "Expect '}' at the end of the block");
-    return std::make_unique<Stmt>(BlockStmt{.stmts = std::move(stmts)});
+    return stmts;
   }
   auto expressionStatement() -> StmtPtr {
     auto expr = expression();
     if (match({TokenType::SEMICOLON}))
-      return std::make_unique<Stmt>(
+      return std::make_shared<Stmt>(
           ExpressionStmt{.expression = std::move(expr)});
     if (isRepl && check(TokenType::EOF_))
-      return std::make_unique<Stmt>(
+      return std::make_shared<Stmt>(
           ReplExpressionStmt{.expression = std::move(expr)});
     throw error(peek(), "Expect ';' after value.");
   }
@@ -143,7 +175,7 @@ export class Parser {
     consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after condition");
     auto thenBranch = statement();
     auto elseBranch = match({TokenType::ELSE}) ? statement() : nullptr;
-    return std::make_unique<Stmt>(IfStmt{.condition = std::move(conditional),
+    return std::make_shared<Stmt>(IfStmt{.condition = std::move(conditional),
                                          .thenBranch = std::move(thenBranch),
                                          .elseBranch = std::move(elseBranch)});
   }
@@ -152,7 +184,7 @@ export class Parser {
     auto condition = expression();
     consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after condition");
     auto body = loopBodyStatement();
-    return std::make_unique<Stmt>(
+    return std::make_shared<Stmt>(
         WhileStmt{.condition = std::move(condition), .body = std::move(body)});
   }
   auto forStatement() -> StmtPtr {
@@ -173,25 +205,25 @@ export class Parser {
     // desugar for clauses
     {
       if (increment) {
-        std::vector<StmtPtr> stmts;
+        std::vector<std::shared_ptr<Stmt>> stmts;
         stmts.reserve(2);
         stmts.emplace_back(std::move(body));
-        stmts.emplace_back(std::make_unique<Stmt>(
+        stmts.emplace_back(std::make_shared<Stmt>(
             ExpressionStmt{.expression = std::move(increment)}));
-        body = std::make_unique<Stmt>(BlockStmt{.stmts = std::move(stmts)});
+        body = std::make_shared<Stmt>(BlockStmt{.stmts = std::move(stmts)});
       }
 
       if (!condition)
-        condition = std::make_unique<Expr>(LiteralExpr{.literal = true});
-      body = std::make_unique<Stmt>(WhileStmt{.condition = std::move(condition),
+        condition = std::make_shared<Expr>(LiteralExpr{.literal = true});
+      body = std::make_shared<Stmt>(WhileStmt{.condition = std::move(condition),
                                               .body = std::move(body)});
 
       if (initializer) {
-        std::vector<StmtPtr> stmts;
+        std::vector<std::shared_ptr<Stmt>> stmts;
         stmts.reserve(2);
         stmts.emplace_back(std::move(initializer));
         stmts.emplace_back(std::move(body));
-        body = std::make_unique<Stmt>(BlockStmt{.stmts = std::move(stmts)});
+        body = std::make_shared<Stmt>(BlockStmt{.stmts = std::move(stmts)});
       }
     }
 
@@ -200,7 +232,7 @@ export class Parser {
   auto breakStatement() -> StmtPtr {
     if (loopDepth > 0) {
       consumeOrError(TokenType::SEMICOLON, "Expect ';' after break.");
-      return std::make_unique<Stmt>(BreakStmt{});
+      return std::make_shared<Stmt>(BreakStmt{});
     }
     throw error(previous(), "'break' is not enclosed in a loop");
   }
@@ -221,7 +253,7 @@ export class Parser {
       const auto equals = previous();
       auto value = ternary();
       if (const auto *var_ptr = std::get_if<VarExpr>(&expr->node)) {
-        return std::make_unique<Expr>(
+        return std::make_shared<Expr>(
             AssignExpr{.name = var_ptr->name, .value = std::move(value)});
       }
       error(equals, "Invalid assignment target.");
@@ -235,7 +267,7 @@ export class Parser {
       consumeOrError(TokenType::COLON,
                      "Expect ':' after first expression in ternary.");
       auto right = ternary();
-      expr = std::make_unique<Expr>(TernaryExpr{.cond = std::move(expr),
+      expr = std::make_shared<Expr>(TernaryExpr{.cond = std::move(expr),
                                                 .left = std::move(left),
                                                 .right = std::move(right)});
     }
@@ -268,7 +300,7 @@ export class Parser {
     if (match({TokenType::BANG, TokenType::MINUS})) {
       const auto op = previous();
       auto right = unary();
-      return std::make_unique<Expr>(
+      return std::make_shared<Expr>(
           UnaryExpr{.op = op, .right = std::move(right)});
     }
     return call();
@@ -292,18 +324,18 @@ export class Parser {
     auto rightParen = consumeOrError(TokenType::RIGHT_PAREN,
                                      "Expect ')' after function arguments");
 
-    return std::make_unique<Expr>(
+    return std::make_shared<Expr>(
         CallExpr{.callee = std::move(callee),
                  .args = std::move(args),
                  .rightParen = std::move(rightParen)});
   }
   auto primary() -> ExprPtr {
     if (match({TokenType::FALSE}))
-      return std::make_unique<Expr>(LiteralExpr{.literal = false});
+      return std::make_shared<Expr>(LiteralExpr{.literal = false});
     if (match({TokenType::TRUE}))
-      return std::make_unique<Expr>(LiteralExpr{.literal = true});
+      return std::make_shared<Expr>(LiteralExpr{.literal = true});
     if (match({TokenType::NIL}))
-      return std::make_unique<Expr>(LiteralExpr{.literal = std::monostate{}});
+      return std::make_shared<Expr>(LiteralExpr{.literal = std::monostate{}});
 
     if (match({TokenType::NUMBER, TokenType::STRING})) {
       const auto token = previous();
@@ -314,16 +346,16 @@ export class Parser {
       const auto parse_literal = literal.visit(
           overloads{[](auto const &arg) -> ParseLiteral { return arg; }});
 
-      return std::make_unique<Expr>(LiteralExpr{.literal = parse_literal});
+      return std::make_shared<Expr>(LiteralExpr{.literal = parse_literal});
     }
 
     if (match({TokenType::IDENTIFIER}))
-      return std::make_unique<Expr>(VarExpr{.name = previous()});
+      return std::make_shared<Expr>(VarExpr{.name = previous()});
 
     if (match({TokenType::LEFT_PAREN})) {
       auto expr = expression();
       consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
-      return std::make_unique<Expr>(
+      return std::make_shared<Expr>(
           GroupingExpr{.expression = std::move(expr)});
     }
 
@@ -336,7 +368,7 @@ export class Parser {
     while (match(ts)) {
       const auto op = previous();
       auto right = std::invoke(nextExpr, this);
-      expr = std::make_unique<Expr>(
+      expr = std::make_shared<Expr>(
           T{.op = op, .left = std::move(expr), .right = std::move(right)});
     }
     return expr;

@@ -70,7 +70,7 @@ export struct Interpreter : public ExprVisitor<Object>,
 
   void interpret(const std::span<StmtPtr> stmts) {
     try {
-      for (auto &stmt : stmts) {
+      for (const auto &stmt : stmts) {
         execute(*stmt);
       }
     } catch (RuntimeException &ex) {
@@ -253,12 +253,18 @@ export struct Interpreter : public ExprVisitor<Object>,
   }
 
   void visit(BlockStmt &stmt) override {
+    auto currentEnv = Environment(env);
+    executeBlock(stmt.stmts, &currentEnv);
+  }
+
+  void executeBlock(std::vector<std::shared_ptr<Stmt>> &body,
+                    Environment *other) {
     auto previous = env;
     const auto _ = Defer([this, &previous]() { env = previous; });
 
-    auto currentEnv = Environment(previous);
+    auto currentEnv = Environment(other);
     env = &currentEnv;
-    for (auto &stmt_ : stmt.stmts) {
+    for (const auto &stmt_ : body) {
       execute(*stmt_);
     }
   }
@@ -284,8 +290,11 @@ export struct Interpreter : public ExprVisitor<Object>,
     throw BreakException();
   }
 
-private:
+  void visit(FunctionStmt &stmt) override;
+
   Environment globals;
+
+private:
   Environment *env;
 
   void execute(Stmt &stmt) {

@@ -30,7 +30,8 @@ export namespace lox {
   STMT(BlockStmt, __VA_ARGS__)                                                 \
   STMT(IfStmt, __VA_ARGS__)                                                    \
   STMT(WhileStmt, __VA_ARGS__)                                                 \
-  STMT(BreakStmt, __VA_ARGS__)
+  STMT(BreakStmt, __VA_ARGS__)                                                 \
+  STMT(FunctionStmt, __VA_ARGS__)
 
 // Forward declare constructs
 #define CONSTRUCT_DECL(CONSTRUCT, ...) struct CONSTRUCT;
@@ -63,8 +64,8 @@ using StmtNode = MakeVariant<void STMTS(ENUMERATE)>;
 
 struct Expr;
 struct Stmt;
-using ExprPtr = std::unique_ptr<Expr>;
-using StmtPtr = std::unique_ptr<Stmt>;
+using ExprPtr = std::shared_ptr<Expr>;
+using StmtPtr = std::shared_ptr<Stmt>;
 
 struct TernaryExpr {
   ExprPtr cond, left, right;
@@ -126,7 +127,7 @@ struct VarStmt {
 };
 
 struct BlockStmt {
-  std::vector<StmtPtr> stmts;
+  std::vector<std::shared_ptr<Stmt>> stmts;
 };
 
 struct IfStmt {
@@ -141,6 +142,12 @@ struct WhileStmt {
 };
 
 struct BreakStmt {};
+
+struct FunctionStmt {
+  Token name;
+  std::vector<Token> params;
+  std::vector<std::shared_ptr<Stmt>> body;
+};
 
 struct Expr {
   ExprNode node;
