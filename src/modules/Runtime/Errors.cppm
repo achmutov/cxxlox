@@ -6,8 +6,9 @@ module;
 #include <string_view>
 #include <utility>
 
-export module lox.runtime.errors;
+export module lox.runtime:errors;
 import lox.token;
+import :object;
 
 export namespace lox::runtime {
 class RuntimeException : public std::runtime_error {
@@ -52,6 +53,17 @@ public:
   BreakException() : RuntimeException{"unenclosed 'break' keyword"} {}
   constexpr auto name() -> std::string_view override {
     return "BreakException";
+  }
+};
+
+class ReturnException : public RuntimeException {
+public:
+  Object value;
+  explicit ReturnException(Object value)
+      : RuntimeException{"unenclosed 'return' keyword"},
+        value(std::move(value)) {}
+  constexpr auto name() -> std::string_view override {
+    return "ReturnException";
   }
 };
 

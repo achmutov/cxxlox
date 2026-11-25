@@ -30,8 +30,10 @@ import lox.utils;
 // funDecl        -> "fun" function ;
 // function       -> IDENTIFIER "(" parameters? ")" block ;
 // parameters     -> identifier ( "," IDENTIFIER )* ","? ;
-// statement      -> printStmt | ifStmt | whileStmt | forStmt | expressionStmt | replExpressionStmt | block | break ;
+// statement      -> printStmt | ifStmt | whileStmt | forStmt | expressionStmt | replExpressionStmt | block | break | return ;
 // block          -> "{" declaration* "}"
+// break          -> "break" ";" ;
+// return         -> "return" expression? ";" ;
 // printStmt      -> "print" expression ";" ;
 // ifStmt         -> "if" "(" expression ")" statement ( "else" statement )? ;
 // whileStmt      -> "while" "(" expression ")" statement ;
@@ -143,6 +145,8 @@ export class Parser {
       return forStatement();
     if (match({TokenType::BREAK}))
       return breakStatement();
+    if (match({TokenType::RETURN}))
+      return returnStatement();
     return expressionStatement();
   }
   auto printStatement() -> StmtPtr {
@@ -235,6 +239,13 @@ export class Parser {
       return std::make_shared<Stmt>(BreakStmt{});
     }
     throw error(previous(), "'break' is not enclosed in a loop");
+  }
+  auto returnStatement() -> StmtPtr {
+    const auto keyword = previous();
+    ExprPtr value = !check(TokenType::SEMICOLON) ? expression() : nullptr;
+    consumeOrError(TokenType::SEMICOLON, "Expect ';' after return value.");
+    return std::make_shared<Stmt>(
+        ReturnStmt{.keyword = keyword, .value = std::move(value)});
   }
   auto loopBodyStatement() -> StmtPtr {
     loopDepth += 1;

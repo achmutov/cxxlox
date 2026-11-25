@@ -31,7 +31,8 @@ export namespace lox {
   STMT(IfStmt, __VA_ARGS__)                                                    \
   STMT(WhileStmt, __VA_ARGS__)                                                 \
   STMT(BreakStmt, __VA_ARGS__)                                                 \
-  STMT(FunctionStmt, __VA_ARGS__)
+  STMT(FunctionStmt, __VA_ARGS__)                                              \
+  STMT(ReturnStmt, __VA_ARGS__)
 
 // Forward declare constructs
 #define CONSTRUCT_DECL(CONSTRUCT, ...) struct CONSTRUCT;
@@ -147,6 +148,11 @@ struct FunctionStmt {
   Token name;
   std::vector<Token> params;
   std::vector<std::shared_ptr<Stmt>> body;
+};
+
+struct ReturnStmt {
+  Token keyword;
+  ExprPtr value;
 };
 
 struct Expr {

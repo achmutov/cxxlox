@@ -8,7 +8,7 @@ module;
 
 export module lox.runtime:environment;
 import :object;
-import lox.runtime.errors;
+import :errors;
 import lox.utils;
 
 namespace lox::runtime {

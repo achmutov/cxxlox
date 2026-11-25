@@ -2,6 +2,7 @@ module;
 
 #include <cassert>
 #include <concepts>
+#include <cstdio>
 #include <cstdlib>
 #include <format>
 #include <functional>
@@ -23,7 +24,7 @@ import lox.ast;
 import lox.token;
 import lox.tokentype;
 import lox.utils;
-import lox.runtime.errors;
+import :errors;
 import :object;
 import :callable;
 import :environment;
@@ -243,6 +244,7 @@ export struct Interpreter : public ExprVisitor<Object>,
   }
   void visit(PrintStmt &stmt) override {
     std::println("{}", stringify(evaluate(*stmt.expression)));
+    std::fflush(stdout);
   }
   void visit(VarStmt &stmt) override {
     const auto name = stmt.name.lexeme;
@@ -291,6 +293,11 @@ export struct Interpreter : public ExprVisitor<Object>,
   }
 
   void visit(FunctionStmt &stmt) override;
+
+  void visit(ReturnStmt &stmt) override {
+    auto value = stmt.value ? evaluate(*stmt.value) : Nil{};
+    throw ReturnException{std::move(value)};
+  }
 
   Environment globals;
 

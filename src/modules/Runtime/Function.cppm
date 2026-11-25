@@ -26,7 +26,11 @@ struct Function : public CallableI {
     for (auto a : std::ranges::views::zip(declaration.params, args))
       env.define(std::get<0>(a).lexeme, std::get<1>(a));
 
-    interpreter.executeBlock(declaration.body, &env);
+    try {
+      interpreter.executeBlock(declaration.body, &env);
+    } catch (ReturnException &ex) {
+      return ex.value;
+    }
     return Nil{};
   }
 };
