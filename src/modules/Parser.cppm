@@ -66,13 +66,6 @@ enum class BinaryExprPrecedence : std::uint8_t {
   UNARY
 };
 
-namespace {
-template <class... Ts>
-struct overloads : Ts... {
-  using Ts::operator()...;
-};
-} // namespace
-
 export class ParseException : public std::runtime_error {
   using std::runtime_error::runtime_error;
 };

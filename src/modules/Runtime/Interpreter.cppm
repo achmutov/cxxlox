@@ -36,14 +36,6 @@ import lox.runtime.environment;
 
 namespace lox::runtime {
 
-namespace {
-template <class... Ts>
-struct overloads : Ts... {
-  using Ts::operator()...;
-};
-
-} // namespace
-
 template <typename T, typename Variant>
 struct IsVariantAlternative;
 

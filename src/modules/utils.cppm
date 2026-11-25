@@ -153,4 +153,9 @@ struct Defer {
     callback();
   }
 };
+
+template <class... Ts>
+struct overloads : Ts... {
+  using Ts::operator()...;
+};
 } // namespace lox

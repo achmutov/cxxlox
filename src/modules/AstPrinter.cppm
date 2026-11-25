@@ -11,13 +11,6 @@ import lox.ast;
 
 namespace lox {
 
-namespace {
-template <class... Ts>
-struct overloads : Ts... {
-  using Ts::operator()...;
-};
-} // namespace
-
 template <class T>
 concept ExprType = std::same_as<T, Expr>;
 

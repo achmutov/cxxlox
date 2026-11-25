@@ -11,13 +11,6 @@ export module lox.token;
 import lox.utils;
 import lox.tokentype;
 
-namespace {
-template <class... Ts>
-struct overloads : Ts... {
-  using Ts::operator()...;
-};
-} // namespace
-
 export namespace lox {
 
 using Literal = std::variant<std::string, double>;

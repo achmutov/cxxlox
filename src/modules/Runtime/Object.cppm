@@ -9,13 +9,7 @@ module;
 #include <vector>
 
 export module lox.runtime.object;
-
-namespace lox::detail {
-template <class... Ts>
-struct overloads : Ts... {
-  using Ts::operator()...;
-};
-} // namespace lox::detail
+import lox.utils;
 
 export namespace lox {
 
@@ -55,23 +49,22 @@ struct CallableI {
 };
 constexpr auto interpreterTypeName(const Object &object) -> std::string_view {
   using namespace std::string_view_literals;
-  return object.visit(
-      lox::detail::overloads{[](const String &) { return "string"sv; },
-                             [](const Nil) { return "nil"sv; },
-                             [](const Boolean) { return "boolean"sv; },
-                             [](const Number &) { return "number"sv; },
-                             [](const Callable &) { return "callable"sv; }});
+  return object.visit(overloads{[](const String &) { return "string"sv; },
+                                [](const Nil) { return "nil"sv; },
+                                [](const Boolean) { return "boolean"sv; },
+                                [](const Number &) { return "number"sv; },
+                                [](const Callable &) { return "callable"sv; }});
 }
 
 auto stringify(Object obj) -> std::string {
-  return obj.visit(lox::detail::overloads{
-      [](String value) { return std::move(value.value); },
-      [](const Nil) { return std::string{"nil"}; },
-      [](const Boolean value) {
-        return std::string{value.value ? "true" : "false"};
-      },
-      [](const Number value) { return std::to_string(value.value); },
-      [](const Callable &) { return std::string("callable"); }});
+  return obj.visit(
+      overloads{[](String value) { return std::move(value.value); },
+                [](const Nil) { return std::string{"nil"}; },
+                [](const Boolean value) {
+                  return std::string{value.value ? "true" : "false"};
+                },
+                [](const Number value) { return std::to_string(value.value); },
+                [](const Callable &) { return std::string("callable"); }});
 }
 } // namespace runtime
 } // namespace lox
