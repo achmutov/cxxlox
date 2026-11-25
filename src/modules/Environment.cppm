@@ -48,7 +48,7 @@ private:
   Environment *enclosing;
 
   [[noreturn]] void undefinedVariable(std::string_view name) {
-    throw InterpreterRuntimeException(
+    throw interpreter::RuntimeException(
         std::format("Undefined variable '{}'.", name));
   }
 };

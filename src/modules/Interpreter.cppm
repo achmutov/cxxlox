@@ -78,7 +78,7 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
       for (auto &stmt : stmts) {
         execute(*stmt);
       }
-    } catch (InterpreterRuntimeException &ex) {
+    } catch (interpreter::RuntimeException &ex) {
       std::cout << ex.what2() << "\n";
       hadRuntimeError = true;
     }
@@ -113,7 +113,7 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     case TokenType::MINUS:
       if (auto p = std::get_if<InterpreterNumber>(&right))
         return -*p;
-      throw InterpreterTypeException(expr.op, "Operand must be a number");
+      throw interpreter::TypeException(expr.op, "Operand must be a number");
     case TokenType::BANG:
       return !isTruthy(right);
     default:
@@ -131,11 +131,11 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
       const auto *right_value = std::get_if<InterpreterNumber>(&right);
 
       if (!left_value || !right_value)
-        throw InterpreterTypeException(expr.op, binary_numeric_error);
+        throw interpreter::TypeException(expr.op, binary_numeric_error);
 
       // check division
       if (std::abs(right_value->value) < std::numeric_limits<double>::epsilon())
-        throw InterpreterZeroDivisionException{};
+        throw interpreter::ZeroDivisionException{};
 
       return InterpreterNumber{left_value->value / right_value->value};
     }
@@ -167,9 +167,9 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
       if (result.has_value())
         return result.value();
 
-      throw InterpreterTypeException(expr.op,
-                                     "Operands must be two numbers or two "
-                                     "strings, or one number and one string.");
+      throw interpreter::TypeException(
+          expr.op, "Operands must be two numbers or two "
+                   "strings, or one number and one string.");
     }
     case TokenType::GREATER:
       return interpretNumericalBinaryExpr<InterpreterBoolean>(
@@ -239,7 +239,7 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
       {
         const auto arity = object->get()->arity();
         if (args.size() != arity)
-          throw InterpreterTypeException(
+          throw interpreter::TypeException(
               expr.rightParen, std::format("Expected {} arguments but got {}",
                                            arity, args.size()));
       }
@@ -247,8 +247,8 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
       return object->get()->call(std::move(args));
     }
 
-    throw InterpreterTypeException(expr.rightParen,
-                                   "Can only call functions and classes.");
+    throw interpreter::TypeException(expr.rightParen,
+                                     "Can only call functions and classes.");
   }
 
   void visitExpressionStmt(ExpressionStmt &stmt) override {
@@ -290,14 +290,14 @@ export struct Interpreter : public Expr::Visitor<InterpreterObject>,
     while (isTruthy(evaluate(*stmt.condition)).value)
       try {
         execute(*stmt.body);
-      } catch (InterpreterBreakException &) {
+      } catch (interpreter::BreakException &) {
         break;
       }
   }
 
   void visitBreakStmt(BreakStmt &stmt) override {
     (void)stmt;
-    throw InterpreterBreakException();
+    throw interpreter::BreakException();
   }
 
 private:
@@ -364,7 +364,7 @@ private:
         left, right, std::forward<decltype(f)>(f));
 
     if (!result.has_value())
-      throw InterpreterTypeException(token, binary_numeric_error);
+      throw interpreter::TypeException(token, binary_numeric_error);
 
     return result.value();
   }

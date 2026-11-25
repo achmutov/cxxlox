@@ -9,12 +9,10 @@ module;
 export module Interpreter.Errors;
 import Token;
 
-export namespace lox {
-
-class InterpreterRuntimeException : public std::runtime_error {
+export namespace lox::interpreter {
+class RuntimeException : public std::runtime_error {
 public:
-  explicit InterpreterRuntimeException(std::string &&msg)
-      : std::runtime_error{msg} {}
+  explicit RuntimeException(std::string &&msg) : std::runtime_error{msg} {}
 
   constexpr virtual auto name() -> std::string_view {
     return "RuntimeException";
@@ -25,11 +23,11 @@ public:
   }
 };
 
-class InterpreterTypeException : public InterpreterRuntimeException {
+class TypeException : public RuntimeException {
 public:
   Token token;
-  InterpreterTypeException(Token token, std::string &&msg)
-      : InterpreterRuntimeException{std::move(msg)}, token{std::move(token)} {}
+  TypeException(Token token, std::string &&msg)
+      : RuntimeException{std::move(msg)}, token{std::move(token)} {}
 
   constexpr auto name() -> std::string_view override {
     return "TypeException";
@@ -40,23 +38,22 @@ public:
   }
 };
 
-class InterpreterZeroDivisionException : public InterpreterRuntimeException {
+class ZeroDivisionException : public RuntimeException {
 public:
-  InterpreterZeroDivisionException()
-      : InterpreterRuntimeException{"division by zero"} {}
+  ZeroDivisionException() : interpreter::RuntimeException{"division by zero"} {}
 
   constexpr auto name() -> std::string_view override {
     return "ZeroDivisionError";
   }
 };
 
-class InterpreterBreakException : public InterpreterRuntimeException {
+class BreakException : public interpreter::RuntimeException {
 public:
-  InterpreterBreakException()
-      : InterpreterRuntimeException{"unenclosed 'break' keyword"} {}
+  BreakException()
+      : interpreter::RuntimeException{"unenclosed 'break' keyword"} {}
   constexpr auto name() -> std::string_view override {
     return "BreakException";
   }
 };
 
-} // namespace lox
+} // namespace lox::interpreter
