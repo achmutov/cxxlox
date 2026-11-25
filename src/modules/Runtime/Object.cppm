@@ -8,7 +8,7 @@ module;
 #include <variant>
 #include <vector>
 
-export module lox.interpreter.object;
+export module lox.runtime.object;
 
 namespace lox::detail {
 template <class... Ts>

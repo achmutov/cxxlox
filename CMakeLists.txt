@@ -23,10 +23,10 @@ target_sources(
                 src/modules/utils.cppm
                 src/modules/TokenType.cppm
                 src/modules/Parser.cppm
-                src/modules/Interpreter.cppm
-                src/modules/InterpreterObject.cppm
-                src/modules/InterpreterErrors.cppm
-                src/modules/Environment.cppm
+                src/modules/Runtime/Interpreter.cppm
+                src/modules/Runtime/Object.cppm
+                src/modules/Runtime/Errors.cppm
+                src/modules/Runtime/Environment.cppm
 )
 target_compile_options(
     lox

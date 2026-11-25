@@ -18,14 +18,14 @@ module;
 #include <variant>
 #include <vector>
 
-export module lox.interpreter;
+export module lox.runtime.interpreter;
 import lox.ast;
 import lox.token;
 import lox.tokentype;
 import lox.utils;
-import lox.interpreter.object;
-import lox.interpreter.errors;
-import lox.interpreter.environment;
+import lox.runtime.object;
+import lox.runtime.errors;
+import lox.runtime.environment;
 
 #define INTERPRET_RETURN(LEFT, RIGHT, OP, ...)                                 \
   {                                                                            \

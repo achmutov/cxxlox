@@ -6,7 +6,7 @@ module;
 #include <string_view>
 #include <utility>
 
-export module lox.interpreter.errors;
+export module lox.runtime.errors;
 import lox.token;
 
 export namespace lox::interpreter {

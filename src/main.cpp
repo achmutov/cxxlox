@@ -14,7 +14,7 @@ import lox.ast;
 // import lox.astprinter;
 import lox.parser;
 import lox.utils;
-import lox.interpreter;
+import lox.runtime.interpreter;
 
 static void run(std::string_view script, lox::Interpreter &interpreter,
                 bool isRepl) {
