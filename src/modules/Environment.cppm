@@ -6,10 +6,10 @@ module;
 #include <unordered_map>
 #include <utility>
 
-export module Interpreter.Environment;
-import Interpreter.Object;
-import Interpreter.Errors;
-import utils;
+export module lox.interpreter.environment;
+import lox.interpreter.object;
+import lox.interpreter.errors;
+import lox.utils;
 
 namespace lox::interpreter {
 

@@ -8,8 +8,8 @@ module;
 #include <print>
 #include <string_view>
 
-export module utils;
-import TokenType;
+export module lox.utils;
+import lox.tokentype;
 
 export namespace lox {
 bool hadError = false;

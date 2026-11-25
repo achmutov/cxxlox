@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 
-export module TokenType;
+export module lox.tokentype;
 
 export namespace lox {
 

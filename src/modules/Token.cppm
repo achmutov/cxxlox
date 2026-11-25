@@ -7,9 +7,9 @@ module;
 #include <utility>
 #include <variant>
 
-export module Token;
-import utils;
-import TokenType;
+export module lox.token;
+import lox.utils;
+import lox.tokentype;
 
 namespace {
 template <class... Ts>

@@ -16,11 +16,11 @@ module;
 #include <variant>
 #include <vector>
 
-export module Parser;
-import Token;
-import Ast;
-import TokenType;
-import utils;
+export module lox.parser;
+import lox.token;
+import lox.ast;
+import lox.tokentype;
+import lox.utils;
 
 // clang-format off
 

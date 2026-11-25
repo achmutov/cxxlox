@@ -9,10 +9,10 @@ module;
 #include <utility>
 #include <vector>
 
-export module Scanner;
-import Token;
-import utils;
-import TokenType;
+export module lox.scanner;
+import lox.token;
+import lox.utils;
+import lox.tokentype;
 
 namespace lox {
 

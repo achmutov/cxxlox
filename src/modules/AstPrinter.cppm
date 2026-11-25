@@ -6,8 +6,8 @@ module;
 #include <string_view>
 #include <variant>
 
-export module AstPrinter;
-import Ast;
+export module lox.astprinter;
+import lox.ast;
 
 namespace lox {
 

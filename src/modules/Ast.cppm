@@ -6,9 +6,9 @@ module;
 #include <variant>
 #include <vector>
 
-export module Ast;
-import Token;
-import Interpreter.Object;
+export module lox.ast;
+import lox.token;
+import lox.interpreter.object;
 
 export namespace lox {
 

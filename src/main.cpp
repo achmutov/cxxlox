@@ -8,13 +8,13 @@
 #include <string_view>
 #include <vector>
 
-import Token;
-import Scanner;
-import Ast;
-// import AstPrinter;
-import Parser;
-import utils;
-import Interpreter;
+import lox.token;
+import lox.scanner;
+import lox.ast;
+// import lox.astprinter;
+import lox.parser;
+import lox.utils;
+import lox.interpreter;
 
 static void run(std::string_view script, lox::Interpreter &interpreter,
                 bool isRepl) {

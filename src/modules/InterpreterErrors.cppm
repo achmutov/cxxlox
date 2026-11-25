@@ -6,8 +6,8 @@ module;
 #include <string_view>
 #include <utility>
 
-export module Interpreter.Errors;
-import Token;
+export module lox.interpreter.errors;
+import lox.token;
 
 export namespace lox::interpreter {
 class RuntimeException : public std::runtime_error {
