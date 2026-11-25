@@ -69,8 +69,8 @@ concept BinaryOperation = requires(F &f, Input a, Output b) {
   { std::invoke(f, a, b) } -> std::same_as<Output>;
 };
 
-export struct Interpreter : public Expr::Visitor<Object>,
-                            public Stmt::Visitor<void> {
+export struct Interpreter : public ExprVisitor<Object>,
+                            public StmtVisitor<void> {
   constexpr static auto binary_numeric_error = "Operands must be numbers";
 
   void interpret(const std::span<StmtPtr> stmts) {
@@ -84,12 +84,12 @@ export struct Interpreter : public Expr::Visitor<Object>,
     }
   }
 
-  auto visitTernaryExpr(TernaryExpr &expr) -> Object override {
+  auto visit(TernaryExpr &expr) -> Object override {
     return isTruthy(evaluate(*expr.cond)).value ? evaluate(*expr.left)
                                                 : evaluate(*expr.right);
   }
 
-  auto visitLiteralExpr(LiteralExpr &expr) -> Object override {
+  auto visit(LiteralExpr &expr) -> Object override {
     return expr.literal.visit(overloads{
         [](std::string value) -> Object { return String{std::move(value)}; },
         [](double value) -> Object { return Number{value}; },
@@ -97,11 +97,11 @@ export struct Interpreter : public Expr::Visitor<Object>,
         [](std::monostate) -> Object { return Nil{}; }});
   } // namespace lox
 
-  auto visitGroupingExpr(GroupingExpr &expr) -> Object override {
+  auto visit(GroupingExpr &expr) -> Object override {
     return evaluate(*expr.expression);
   }
 
-  auto visitUnaryExpr(UnaryExpr &expr) -> Object override {
+  auto visit(UnaryExpr &expr) -> Object override {
     auto right = evaluate(*expr.right);
     switch (expr.op.type) {
     case TokenType::MINUS:
@@ -116,7 +116,7 @@ export struct Interpreter : public Expr::Visitor<Object>,
     }
   }
 
-  auto visitBinaryExpr(BinaryExpr &expr) -> Object override {
+  auto visit(BinaryExpr &expr) -> Object override {
     auto left = evaluate(*expr.left);
     auto right = evaluate(*expr.right);
     switch (expr.op.type) {
@@ -189,17 +189,17 @@ export struct Interpreter : public Expr::Visitor<Object>,
     }
   }
 
-  auto visitVarExpr(VarExpr &expr) -> Object override {
+  auto visit(VarExpr &expr) -> Object override {
     return env.get(expr.name.lexeme);
   }
 
-  auto visitAssignExpr(AssignExpr &expr) -> Object override {
+  auto visit(AssignExpr &expr) -> Object override {
     auto value = evaluate(*expr.value);
     env.assign(expr.name.lexeme, value);
     return value;
   }
 
-  auto visitLogicalExpr(LogicalExpr &expr) -> Object override {
+  auto visit(LogicalExpr &expr) -> Object override {
     auto left_obj = evaluate(*expr.left);
     switch (expr.op.type) {
     case TokenType::OR:
@@ -216,7 +216,7 @@ export struct Interpreter : public Expr::Visitor<Object>,
     return evaluate(*expr.right);
   }
 
-  auto visitCallExpr(CallExpr &expr) -> Object override {
+  auto visit(CallExpr &expr) -> Object override {
     auto callee = evaluate(*expr.callee);
     auto args = expr.args |
                 std::ranges::views::transform(
@@ -240,16 +240,16 @@ export struct Interpreter : public Expr::Visitor<Object>,
                         "Can only call functions and classes.");
   }
 
-  void visitExpressionStmt(ExpressionStmt &stmt) override {
+  void visit(ExpressionStmt &stmt) override {
     evaluate(*stmt.expression);
   }
-  void visitReplExpressionStmt(ReplExpressionStmt &stmt) override {
+  void visit(ReplExpressionStmt &stmt) override {
     std::println("{}", stringify(evaluate(*stmt.expression)));
   }
-  void visitPrintStmt(PrintStmt &stmt) override {
+  void visit(PrintStmt &stmt) override {
     std::println("{}", stringify(evaluate(*stmt.expression)));
   }
-  void visitVarStmt(VarStmt &stmt) override {
+  void visit(VarStmt &stmt) override {
     const auto name = stmt.name.lexeme;
     const auto value =
         stmt.expression != nullptr ? evaluate(*stmt.expression) : Nil{};
@@ -257,7 +257,7 @@ export struct Interpreter : public Expr::Visitor<Object>,
     env.define(name, value);
   }
 
-  void visitBlockStmt(BlockStmt &stmt) override {
+  void visit(BlockStmt &stmt) override {
     auto previous = std::move(env);
     const auto _ = Defer([this, &previous]() { env = std::move(previous); });
 
@@ -268,14 +268,14 @@ export struct Interpreter : public Expr::Visitor<Object>,
     }
   }
 
-  void visitIfStmt(IfStmt &stmt) override {
+  void visit(IfStmt &stmt) override {
     if (isTruthy(evaluate(*stmt.condition)).value)
       execute(*stmt.thenBranch);
     else if (stmt.elseBranch)
       execute(*stmt.elseBranch);
   }
 
-  void visitWhileStmt(WhileStmt &stmt) override {
+  void visit(WhileStmt &stmt) override {
     while (isTruthy(evaluate(*stmt.condition)).value)
       try {
         execute(*stmt.body);
@@ -284,7 +284,7 @@ export struct Interpreter : public Expr::Visitor<Object>,
       }
   }
 
-  void visitBreakStmt(BreakStmt &stmt) override {
+  void visit(BreakStmt &stmt) override {
     (void)stmt;
     throw BreakException();
   }
@@ -293,10 +293,10 @@ private:
   Environment env;
 
   void execute(Stmt &stmt) {
-    stmt.accept(*this);
+    stmt.node.visit([this](auto &value) { visit(value); });
   }
   auto evaluate(Expr &expr) -> Object {
-    return expr.accept(*this);
+    return expr.node.visit([this](auto &value) { return visit(value); });
   }
 
   auto isTruthy(const Object &object) -> Boolean {

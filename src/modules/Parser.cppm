@@ -102,7 +102,8 @@ export class Parser {
       initializer = expression();
     consumeOrError(TokenType::SEMICOLON,
                    "Expect ';' after variable declaration.");
-    return std::make_unique<VarStmt>(name, std::move(initializer));
+    return std::make_unique<Stmt>(
+        VarStmt{.name = name, .expression = std::move(initializer)});
   }
   auto statement() -> StmtPtr {
     if (match({TokenType::PRINT}))
@@ -122,7 +123,7 @@ export class Parser {
   auto printStatement() -> StmtPtr {
     auto expr = expression();
     consumeOrError(TokenType::SEMICOLON, "Expect ';' after value.");
-    return std::make_unique<PrintStmt>(std::move(expr));
+    return std::make_unique<Stmt>(PrintStmt{.expression = std::move(expr)});
   }
   auto block() -> StmtPtr {
     auto stmts = std::vector<StmtPtr>{};
@@ -131,14 +132,16 @@ export class Parser {
     }
     consumeOrError(TokenType::RIGHT_BRACE,
                    "Expect '}' at the end of the block");
-    return std::make_unique<BlockStmt>(std::move(stmts));
+    return std::make_unique<Stmt>(BlockStmt{.stmts = std::move(stmts)});
   }
   auto expressionStatement() -> StmtPtr {
     auto expr = expression();
     if (match({TokenType::SEMICOLON}))
-      return std::make_unique<ExpressionStmt>(std::move(expr));
+      return std::make_unique<Stmt>(
+          ExpressionStmt{.expression = std::move(expr)});
     if (isRepl && check(TokenType::EOF_))
-      return std::make_unique<ReplExpressionStmt>(std::move(expr));
+      return std::make_unique<Stmt>(
+          ReplExpressionStmt{.expression = std::move(expr)});
     throw error(peek(), "Expect ';' after value.");
   }
   auto ifStatement() -> StmtPtr {
@@ -147,15 +150,17 @@ export class Parser {
     consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after condition");
     auto thenBranch = statement();
     auto elseBranch = match({TokenType::ELSE}) ? statement() : nullptr;
-    return std::make_unique<IfStmt>(
-        std::move(conditional), std::move(thenBranch), std::move(elseBranch));
+    return std::make_unique<Stmt>(IfStmt{.condition = std::move(conditional),
+                                         .thenBranch = std::move(thenBranch),
+                                         .elseBranch = std::move(elseBranch)});
   }
   auto whileStatement() -> StmtPtr {
     consumeOrError(TokenType::LEFT_PAREN, "Expect '(' after 'while'");
     auto condition = expression();
     consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after condition");
     auto body = loopBodyStatement();
-    return std::make_unique<WhileStmt>(std::move(condition), std::move(body));
+    return std::make_unique<Stmt>(
+        WhileStmt{.condition = std::move(condition), .body = std::move(body)});
   }
   auto forStatement() -> StmtPtr {
     // parse for clauses
@@ -178,21 +183,22 @@ export class Parser {
         std::vector<StmtPtr> stmts;
         stmts.reserve(2);
         stmts.emplace_back(std::move(body));
-        stmts.emplace_back(
-            std::make_unique<ExpressionStmt>(std::move(increment)));
-        body = std::make_unique<BlockStmt>(std::move(stmts));
+        stmts.emplace_back(std::make_unique<Stmt>(
+            ExpressionStmt{.expression = std::move(increment)}));
+        body = std::make_unique<Stmt>(BlockStmt{.stmts = std::move(stmts)});
       }
 
       if (!condition)
-        condition = std::make_unique<LiteralExpr>(true);
-      body = std::make_unique<WhileStmt>(std::move(condition), std::move(body));
+        condition = std::make_unique<Expr>(LiteralExpr{.literal = true});
+      body = std::make_unique<Stmt>(WhileStmt{.condition = std::move(condition),
+                                              .body = std::move(body)});
 
       if (initializer) {
         std::vector<StmtPtr> stmts;
         stmts.reserve(2);
         stmts.emplace_back(std::move(initializer));
         stmts.emplace_back(std::move(body));
-        body = std::make_unique<BlockStmt>(std::move(stmts));
+        body = std::make_unique<Stmt>(BlockStmt{.stmts = std::move(stmts)});
       }
     }
 
@@ -201,7 +207,7 @@ export class Parser {
   auto breakStatement() -> StmtPtr {
     if (loopDepth > 0) {
       consumeOrError(TokenType::SEMICOLON, "Expect ';' after break.");
-      return std::make_unique<BreakStmt>();
+      return std::make_unique<Stmt>(BreakStmt{});
     }
     throw error(previous(), "'break' is not enclosed in a loop");
   }
@@ -221,8 +227,9 @@ export class Parser {
     if (match({TokenType::EQUAL})) {
       const auto equals = previous();
       auto value = ternary();
-      if (auto var_ptr = dynamic_cast<VarExpr *>(expr.get())) {
-        return std::make_unique<AssignExpr>(var_ptr->name, std::move(value));
+      if (const auto *var_ptr = std::get_if<VarExpr>(&expr->node)) {
+        return std::make_unique<Expr>(
+            AssignExpr{.name = var_ptr->name, .value = std::move(value)});
       }
       error(equals, "Invalid assignment target.");
     }
@@ -235,8 +242,9 @@ export class Parser {
       consumeOrError(TokenType::COLON,
                      "Expect ':' after first expression in ternary.");
       auto right = ternary();
-      expr = std::make_unique<TernaryExpr>(std::move(expr), std::move(left),
-                                           std::move(right));
+      expr = std::make_unique<Expr>(TernaryExpr{.cond = std::move(expr),
+                                                .left = std::move(left),
+                                                .right = std::move(right)});
     }
     return expr;
   }
@@ -267,7 +275,8 @@ export class Parser {
     if (match({TokenType::BANG, TokenType::MINUS})) {
       const auto op = previous();
       auto right = unary();
-      return std::make_unique<UnaryExpr>(op, std::move(right));
+      return std::make_unique<Expr>(
+          UnaryExpr{.op = op, .right = std::move(right)});
     }
     return call();
   }
@@ -290,16 +299,18 @@ export class Parser {
     auto rightParen = consumeOrError(TokenType::RIGHT_PAREN,
                                      "Expect ')' after function arguments");
 
-    return std::make_unique<CallExpr>(std::move(callee), std::move(args),
-                                      std::move(rightParen));
+    return std::make_unique<Expr>(
+        CallExpr{.callee = std::move(callee),
+                 .args = std::move(args),
+                 .rightParen = std::move(rightParen)});
   }
   auto primary() -> ExprPtr {
     if (match({TokenType::FALSE}))
-      return std::make_unique<LiteralExpr>(false);
+      return std::make_unique<Expr>(LiteralExpr{.literal = false});
     if (match({TokenType::TRUE}))
-      return std::make_unique<LiteralExpr>(true);
+      return std::make_unique<Expr>(LiteralExpr{.literal = true});
     if (match({TokenType::NIL}))
-      return std::make_unique<LiteralExpr>(std::monostate{});
+      return std::make_unique<Expr>(LiteralExpr{.literal = std::monostate{}});
 
     if (match({TokenType::NUMBER, TokenType::STRING})) {
       const auto token = previous();
@@ -310,16 +321,17 @@ export class Parser {
       const auto parse_literal = literal.visit(
           overloads{[](auto const &arg) -> ParseLiteral { return arg; }});
 
-      return std::make_unique<LiteralExpr>(parse_literal);
+      return std::make_unique<Expr>(LiteralExpr{.literal = parse_literal});
     }
 
     if (match({TokenType::IDENTIFIER}))
-      return std::make_unique<VarExpr>(previous());
+      return std::make_unique<Expr>(VarExpr{.name = previous()});
 
     if (match({TokenType::LEFT_PAREN})) {
       auto expr = expression();
       consumeOrError(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
-      return std::make_unique<GroupingExpr>(std::move(expr));
+      return std::make_unique<Expr>(
+          GroupingExpr{.expression = std::move(expr)});
     }
 
     throw error(peek(), "Expect expression.");
@@ -331,7 +343,8 @@ export class Parser {
     while (match(ts)) {
       const auto op = previous();
       auto right = std::invoke(nextExpr, this);
-      expr = std::make_unique<T>(op, std::move(expr), std::move(right));
+      expr = std::make_unique<Expr>(
+          T{.op = op, .left = std::move(expr), .right = std::move(right)});
     }
     return expr;
   }

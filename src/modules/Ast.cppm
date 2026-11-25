@@ -2,13 +2,11 @@ module;
 
 #include <memory>
 #include <string>
-#include <utility>
 #include <variant>
 #include <vector>
 
 export module lox.ast;
 import lox.token;
-import lox.runtime.object;
 
 export namespace lox {
 
@@ -40,171 +38,115 @@ EXPRS(CONSTRUCT_DECL)
 STMTS(CONSTRUCT_DECL)
 #undef CONSTRUCT_DECL
 
-#define VISITOR_EXPR_TYPES(PREDICATE, ...)                                     \
-  PREDICATE(std::string, __VA_ARGS__)                                          \
-  PREDICATE(runtime::Object, __VA_ARGS__)
-#define VISITOR_STMT_TYPES(STMT, ...) STMT(void, __VA_ARGS__)
+#define VISITOR_ABS(EXPR, T) virtual auto visit(EXPR &) -> T = 0;
 
-#define VISITOR_ABS(EXPR, T)    virtual auto visit##EXPR(EXPR &) -> T = 0;
-#define ACCEPT_DECL_ABS(T, ...) virtual auto accept(Visitor<T> &) -> T = 0;
-
-struct Expr {
-  template <class T>
-  struct Visitor {
-    EXPRS(VISITOR_ABS, T)
-  };
-
-  VISITOR_EXPR_TYPES(ACCEPT_DECL_ABS)
-  virtual ~Expr() = default;
+template <class T>
+struct ExprVisitor {
+  EXPRS(VISITOR_ABS, T)
 };
-
-struct Stmt {
-  template <class T>
-  struct Visitor {
-    STMTS(VISITOR_ABS, T)
-  };
-  VISITOR_STMT_TYPES(ACCEPT_DECL_ABS)
-  virtual ~Stmt() = default;
+template <class T>
+struct StmtVisitor {
+  STMTS(VISITOR_ABS, T)
 };
-
-using ExprPtr = std::unique_ptr<Expr>;
-using StmtPtr = std::unique_ptr<Stmt>;
 
 #undef VISITOR_ABS
-#undef ACCEPT_DECL_ABS
 
 using ParseLiteral = std::variant<std::monostate, std::string, double, bool>;
 
-#define CONSTRUCT_ACCEPT_T(T, CONSTRUCT)                                       \
-  auto accept(Visitor<T> &visitor) -> T override {                             \
-    return visitor.visit##CONSTRUCT(*this);                                    \
-  }
+template <typename Dummy, typename... Ts>
+using MakeVariant = std::variant<Ts...>;
 
-#define CONSTRUCT_ACCEPT(T) CONSTRUCT_ACCEPT_T(T, CONSTRUCT)
+#define ENUMERATE(T, ...) , T
+using ExprNode = MakeVariant<void EXPRS(ENUMERATE)>;
+using StmtNode = MakeVariant<void STMTS(ENUMERATE)>;
+#undef ENUMERATE
 
-struct TernaryExpr : public Expr {
+struct Expr;
+struct Stmt;
+using ExprPtr = std::unique_ptr<Expr>;
+using StmtPtr = std::unique_ptr<Stmt>;
+
+struct TernaryExpr {
   ExprPtr cond, left, right;
-  TernaryExpr(ExprPtr cond, ExprPtr left, ExprPtr right)
-      : cond{std::move(cond)}, left{std::move(left)}, right{std::move(right)} {}
-  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, TernaryExpr)
 };
 
-struct BinaryExpr : public Expr {
+struct BinaryExpr {
   Token op;
   ExprPtr left, right;
-  BinaryExpr(Token op, ExprPtr left, ExprPtr right)
-      : op{std::move(op)}, left(std::move(left)), right(std::move(right)) {}
-  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, BinaryExpr)
 };
 
-struct UnaryExpr : public Expr {
+struct UnaryExpr {
   Token op;
   ExprPtr right;
-  UnaryExpr(Token op, ExprPtr right)
-      : op{std::move(op)}, right(std::move(right)) {}
-  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, UnaryExpr)
 };
 
-struct GroupingExpr : public Expr {
+struct GroupingExpr {
   ExprPtr expression;
-  explicit GroupingExpr(ExprPtr expression)
-      : expression(std::move(expression)) {}
-
-  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, GroupingExpr)
 };
 
-struct LiteralExpr : public Expr {
+struct LiteralExpr {
   ParseLiteral literal;
-  explicit LiteralExpr(ParseLiteral literal) : literal{std::move(literal)} {}
-  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, LiteralExpr)
 };
 
-struct VarExpr : public Expr {
+struct VarExpr {
   Token name;
-  explicit VarExpr(Token name) : name{std::move(name)} {}
-  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, VarExpr)
 };
 
-struct AssignExpr : public Expr {
+struct AssignExpr {
   Token name;
   ExprPtr value;
-  explicit AssignExpr(Token name, ExprPtr value)
-      : name{std::move(name)}, value{std::move(value)} {}
-  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, AssignExpr)
 };
 
-struct LogicalExpr : public Expr {
+struct LogicalExpr {
   Token op;
   ExprPtr left, right;
-  explicit LogicalExpr(Token op, ExprPtr left, ExprPtr right)
-      : op{std::move(op)}, left(std::move(left)), right(std::move(right)) {}
-  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, LogicalExpr)
 };
 
-struct CallExpr : public Expr {
+struct CallExpr {
   ExprPtr callee;
   std::vector<ExprPtr> args;
   Token rightParen;
-  explicit CallExpr(ExprPtr callee, std::vector<ExprPtr> args, Token rightParen)
-      : callee{std::move(callee)}, args{std::move(args)},
-        rightParen{std::move(rightParen)} {}
-  VISITOR_EXPR_TYPES(CONSTRUCT_ACCEPT_T, CallExpr)
 };
 
-struct ExpressionStmt : public Stmt {
+struct ExpressionStmt {
   ExprPtr expression;
-  explicit ExpressionStmt(ExprPtr expression)
-      : expression{std::move(expression)} {}
-  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, ExpressionStmt)
 };
 
-struct ReplExpressionStmt : public Stmt {
+struct ReplExpressionStmt {
   ExprPtr expression;
-  explicit ReplExpressionStmt(ExprPtr expression)
-      : expression{std::move(expression)} {}
-  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, ReplExpressionStmt)
 };
 
-struct PrintStmt : public Stmt {
+struct PrintStmt {
   ExprPtr expression;
-  explicit PrintStmt(ExprPtr expression) : expression{std::move(expression)} {}
-  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, PrintStmt)
 };
 
-struct VarStmt : public Stmt {
+struct VarStmt {
   Token name;
   ExprPtr expression;
-  explicit VarStmt(Token name, ExprPtr expression)
-      : name{std::move(name)}, expression{std::move(expression)} {}
-  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, VarStmt)
 };
 
-struct BlockStmt : public Stmt {
+struct BlockStmt {
   std::vector<StmtPtr> stmts;
-  explicit BlockStmt(std::vector<StmtPtr> stmts) : stmts{std::move(stmts)} {}
-  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, BlockStmt)
 };
 
-struct IfStmt : public Stmt {
+struct IfStmt {
   ExprPtr condition;
   StmtPtr thenBranch;
   StmtPtr elseBranch;
-  explicit IfStmt(ExprPtr condition, StmtPtr thenBranch, StmtPtr elseBranch)
-      : condition{std::move(condition)}, thenBranch{std::move(thenBranch)},
-        elseBranch{std::move(elseBranch)} {}
-  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, IfStmt)
 };
 
-struct WhileStmt : public Stmt {
+struct WhileStmt {
   ExprPtr condition;
   StmtPtr body;
-  explicit WhileStmt(ExprPtr condition, StmtPtr body)
-      : condition{std::move(condition)}, body{std::move(body)} {}
-  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, WhileStmt)
 };
 
-struct BreakStmt : public Stmt {
-  VISITOR_STMT_TYPES(CONSTRUCT_ACCEPT_T, BreakStmt)
+struct BreakStmt {};
+
+struct Expr {
+  ExprNode node;
 };
 
+struct Stmt {
+  StmtNode node;
+};
 } // namespace lox
